@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+*.log
+
+# Virtualenv
+venv/
+.env/
+
+# Django
+*.pyc
+*.pyo
+*.pyd
+db.sqlite3
+/media/
+staticfiles/
+*.pot
+*.mo
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Movie files
+*.mp4
+*.avi
+*.mkv

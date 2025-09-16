@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Video Highlights</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs"></script>
+</head>
+<body class="bg-gradient-to-r from-slate-900 via-gray-800 to-slate-900 min-h-screen flex items-center justify-center">
+
+  <div class="w-full max-w-lg p-8 rounded-3xl shadow-xl bg-white/10 backdrop-blur-lg border border-white/20 text-white"
+       x-data="highlightApp()">
+
+    <h1 class="text-3xl font-bold text-center mb-6 tracking-wide">⚡ AI Highlight Generator</h1>
+    <p class="text-gray-300 text-center mb-8">
+      Paste a YouTube link and let AI create the best moments for you.
+    </p>
+
+    <!-- Input -->
+    <div class="mb-6">
+      <input type="text"
+             x-model="url"
+             placeholder="Enter YouTube URL"
+             class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-600 focus:ring-2 focus:ring-indigo-400 outline-none text-white placeholder-gray-400">
+    </div>
+
+    <!-- Button -->
+    <button @click="start()"
+            class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-semibold transition">
+      🎬 Generate Highlights
+    </button>
+
+    <!-- Progress -->
+    <div class="mt-6" x-show="loading">
+      <div class="w-full bg-gray-700 rounded-full h-2.5">
+        <div class="bg-indigo-500 h-2.5 rounded-full animate-pulse" style="width: 80%"></div>
+      </div>
+      <p class="text-sm text-gray-400 mt-2 text-center">Processing video... this may take a while ⏳</p>
+    </div>
+
+    <!-- Download -->
+    <div class="mt-8 text-center" x-show="downloadUrl">
+      <a :href="downloadUrl" download="highlight.mp4"
+         class="inline-block bg-emerald-500 hover:bg-emerald-400 px-6 py-3 rounded-xl font-bold text-white transition">
+        ⬇️ Download Highlight
+      </a>
+    </div>
+  </div>
+
+  <script>
+    function highlightApp() {
+      return {
+        url: "",
+        loading: false,
+        downloadUrl: null,
+
+        async start() {
+          if (!this.url) {
+            alert("Please enter a YouTube URL");
+            return;
+          }
+          this.loading = true;
+          this.downloadUrl = null;
+
+          try {
+            let res = await fetch(`/start/?url=${encodeURIComponent(this.url)}`);
+            if (!res.ok) throw new Error("Failed to process video");
+
+            // Convert response into a downloadable blob
+            let blob = await res.blob();
+            this.downloadUrl = URL.createObjectURL(blob);
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            this.loading = false;
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
