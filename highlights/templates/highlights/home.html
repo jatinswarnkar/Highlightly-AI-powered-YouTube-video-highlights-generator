@@ -8,10 +8,10 @@
 </head>
 <body class="bg-gradient-to-r from-slate-900 via-gray-800 to-slate-900 min-h-screen flex items-center justify-center">
 
-  <div class="w-full max-w-lg p-8 rounded-3xl shadow-xl bg-white/10 backdrop-blur-lg border border-white/20 text-white"
+  <div class="w-full max-w-3xl p-8 rounded-3xl shadow-xl bg-white/10 backdrop-blur-lg border border-white/20 text-white"
        x-data="highlightApp()">
 
-    <h1 class="text-3xl font-bold text-center mb-6 tracking-wide">⚡ AI Highlight Generator</h1>
+    <h1 class="text-4xl font-bold text-center mb-6 tracking-wide">⚡ AI Video Highlights Generator</h1>
     <p class="text-gray-300 text-center mb-8">
       Paste a YouTube link and let AI create the best moments for you.
     </p>
@@ -30,21 +30,38 @@
       🎬 Generate Highlights
     </button>
 
-    <!-- Progress -->
-    <div class="mt-6" x-show="loading">
-      <div class="w-full bg-gray-700 rounded-full h-2.5">
-        <div class="bg-indigo-500 h-2.5 rounded-full animate-pulse" style="width: 80%"></div>
-      </div>
-      <p class="text-sm text-gray-400 mt-2 text-center">Processing video... this may take a while ⏳</p>
+    <!-- Loader -->
+    <div class="mt-6 text-center" x-show="loading">
+      <svg class="animate-spin h-12 w-12 mx-auto text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      </svg>
+      <p class="text-gray-400 mt-2">Processing video... this may take a while ⏳</p>
     </div>
 
-    <!-- Download -->
-    <div class="mt-8 text-center" x-show="downloadUrl">
-      <a :href="downloadUrl" download="highlight.mp4"
-         class="inline-block bg-emerald-500 hover:bg-emerald-400 px-6 py-3 rounded-xl font-bold text-white transition">
-        ⬇️ Download Highlight
-      </a>
+    <!-- Highlights Preview -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6" x-show="highlights.length > 0">
+      <template x-for="highlight in highlights" :key="highlight.video">
+        <div class="bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+          
+          <!-- Video Player -->
+          <video class="w-full h-48 object-cover" controls preload="metadata">
+            <source :src="highlight.video" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+
+          <div class="p-4 flex justify-between items-center">
+            <span class="text-sm text-gray-200 truncate">Highlight Clip</span>
+            <a :href="highlight.video" download
+              class="bg-emerald-500 hover:bg-emerald-400 px-4 py-2 rounded-xl font-bold text-white text-sm">
+              ⬇️ Download
+            </a>
+          </div>
+        </div>
+      </template>
     </div>
+
+
   </div>
 
   <script>
@@ -52,23 +69,22 @@
       return {
         url: "",
         loading: false,
-        downloadUrl: null,
+        highlights: [],
 
         async start() {
-          if (!this.url) {
-            alert("Please enter a YouTube URL");
-            return;
-          }
+          if (!this.url) { alert("Please enter a YouTube URL"); return; }
           this.loading = true;
-          this.downloadUrl = null;
+          this.highlights = [];
 
           try {
-            let res = await fetch(`/start/?url=${encodeURIComponent(this.url)}`);
-            if (!res.ok) throw new Error("Failed to process video");
+            const response = await fetch(`/start/?url=${encodeURIComponent(this.url)}`);
+            if (!response.ok) throw new Error("Failed to process video");
 
-            // Convert response into a downloadable blob
-            let blob = await res.blob();
-            this.downloadUrl = URL.createObjectURL(blob);
+            const data = await response.json();
+            if (data.highlights) {
+              // Limit to top 5–10 highlights
+              this.highlights = data.highlights.slice(0, 10);
+            }
           } catch (err) {
             alert(err.message);
           } finally {
