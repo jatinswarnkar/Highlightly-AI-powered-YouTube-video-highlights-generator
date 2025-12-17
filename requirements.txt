@@ -35,8 +35,8 @@ typing_extensions==4.15.0
 urllib3==2.5.0
 yt-dlp==2025.9.5
 
-# Whisper + Emotion Classifier
-torch==2.1.0
-torchaudio==2.1.0
+# Whisper + Torch (Azure-compatible)
+torch==1.13.1
+torchaudio==0.13.1
+openai-whisper==1.1.10
 transformers==4.33.3
-whisper @ git+https://github.com/openai/whisper.git
