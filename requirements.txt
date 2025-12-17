@@ -35,8 +35,12 @@ typing_extensions==4.15.0
 urllib3==2.5.0
 yt-dlp==2025.9.5
 
-# Whisper + Torch (Azure-compatible)
-torch==1.13.1
-torchaudio==0.13.1
-openai-whisper==1.1.10
+# Torch CPU-only (small wheel)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.0.1+cpu
+torchaudio==2.0.2+cpu
+
+# Whisper version Azure supports
+openai-whisper==20231106
+
 transformers==4.33.3
