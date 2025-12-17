@@ -13,7 +13,10 @@ imageio-ffmpeg==0.6.0
 joblib==1.5.2
 moviepy==2.2.1
 msgpack==1.1.1
-numpy==1.26.4
+
+# FIXED NUMPY
+numpy==2.0.0   # <— IMPORTANT
+
 opencv-python-headless==4.12.0.88
 packaging==25.0
 pillow==11.3.0
@@ -35,12 +38,12 @@ typing_extensions==4.15.0
 urllib3==2.5.0
 yt-dlp==2025.9.5
 
-# Torch CPU-only (small wheel)
+# TORCH CPU (Azure compatible small wheel)
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.0.1+cpu
 torchaudio==2.0.2+cpu
 
-# Whisper version Azure supports
+# WHISPER VERSION COMPATIBLE WITH AZURE + CPU
 openai-whisper==20231106
 
 transformers==4.33.3
