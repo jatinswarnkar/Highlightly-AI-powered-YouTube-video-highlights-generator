@@ -57,3 +57,9 @@ def detect_audio_peaks(audio_path, top_k=5):
     frames = np.argsort(energy)[-top_k:]
     times = librosa.frames_to_time(frames, sr=sr)
     return list(times)
+
+# Cleanup temporary files
+def cleanup_video(video_path):
+    if os.path.exists(video_path):
+        os.remove(video_path)
+        print(f"Deleted original video: {video_path}")

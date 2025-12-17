@@ -123,5 +123,13 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+AZURE_CONNECTION_STRING = os.getenv("AZURE_CONNECTION_STRING")
+AZURE_CONTAINER_NAME = "media"
+
+MEDIA_URL = f"https://highlightly.blob.core.windows.net/media/"
+MEDIA_ROOT = ""
