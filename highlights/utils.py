@@ -3,7 +3,8 @@ from pytube import YouTube
 import ffmpeg
 import cv2
 import numpy as np
-import librosa
+import subprocess
+import numpy as np
 from urllib.parse import urlparse, parse_qs
 
 import os
@@ -50,13 +51,67 @@ def detect_scenes(video_path, threshold=30.0):
     cap.release()
     return scenes
 
-# Detect loud audio peaks
+# # Detect loud audio peaks
+# def detect_audio_peaks(audio_path, top_k=5):
+#     y, sr = librosa.load(audio_path)
+#     energy = librosa.feature.rms(y=y)[0]
+#     frames = np.argsort(energy)[-top_k:]
+#     times = librosa.frames_to_time(frames, sr=sr)
+#     return list(times)
+
 def detect_audio_peaks(audio_path, top_k=5):
-    y, sr = librosa.load(audio_path)
-    energy = librosa.feature.rms(y=y)[0]
-    frames = np.argsort(energy)[-top_k:]
-    times = librosa.frames_to_time(frames, sr=sr)
-    return list(times)
+    """
+    Detect top K loudest audio peaks using FFmpeg (no librosa needed).
+    Returns timestamps (in seconds) of the detected peaks.
+    """
+
+    # FFmpeg command to extract per-frame RMS loudness
+    cmd = [
+        "ffmpeg",
+        "-i", audio_path,
+        "-af", "astats=metadata=1:reset=1",
+        "-f", "null",
+        "-"
+    ]
+
+    process = subprocess.Popen(
+        cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True
+    )
+
+    rms_values = []
+    timestamps = []
+
+    # Parse RMS and timestamp from FFmpeg astats logs
+    for line in process.stderr:
+        if "RMS level" in line:
+            try:
+                rms = float(line.split("RMS level:")[1].strip())
+                rms_values.append(rms)
+            except:
+                pass
+
+        if "Parsed_astats" in line and "pts_time" in line:
+            try:
+                ts = float(line.split("pts_time:")[1].split()[0])
+                timestamps.append(ts)
+            except:
+                pass
+
+    process.wait()
+
+    if not rms_values or not timestamps:
+        return []
+
+    rms_values = np.array(rms_values)
+    timestamps = np.array(timestamps)
+
+    # Get indices of top K loudest frames
+    peak_indices = np.argsort(rms_values)[-top_k:]
+    peak_times = timestamps[peak_indices]
+
+    return sorted(peak_times.tolist())
+
+
 
 # Cleanup temporary files
 def cleanup_video(video_path):

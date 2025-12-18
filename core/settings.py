@@ -26,7 +26,11 @@ SECRET_KEY = 'django-insecure-%o-pnl0_*-h2iyw1+wdr!s0d9_dasmmd_@rd1(7a$frm(v&xd#
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["highlightly-demo.azurewebsites.net", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["highlightly-demo.azurewebsites.net",
+                  "localhost",
+                  "127.0.0.1",
+                  "169.254.129.2",
+                  "169.254.129.1",]
 
 
 
