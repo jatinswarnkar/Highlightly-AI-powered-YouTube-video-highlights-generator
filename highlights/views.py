@@ -115,16 +115,13 @@ from .utils import (
     extract_audio,
     detect_scenes,
     detect_audio_peaks,
+    transcribe_with_azure,   # <-- NEW
     cleanup_video
 )
 from .highlight_generator import make_highlights_multiple
 
-# AI imports
-import whisper
+# Emotion classifier stays exactly the same
 from transformers import pipeline
-
-# Load AI models once at startup
-whisper_model = whisper.load_model("base")
 emotion_classifier = pipeline(
     "text-classification",
     model="bhadresh-savani/distilbert-base-uncased-emotion"
@@ -160,21 +157,35 @@ def start_highlights(request):
     # Step 3: AI-based highlight scoring
     progress = {"status": "detecting highlights", "percent": 50}
 
-    # Scene changes (1 point)
+    # 3A: Detect scenes
     scenes = detect_scenes(video_path)[:20]
     scene_scores = {int(t): 1 for t in scenes}
 
-    # Audio peaks (2 points)
+    # 3B: Detect audio peaks (FFmpeg based)
     peaks = detect_audio_peaks(audio_path, top_k=20)
     peak_scores = {int(t): 2 for t in peaks}
 
-    # Emotion-based AI highlights (3 points)
-    transcription = whisper_model.transcribe(audio_path, word_timestamps=False)
+    # 3C: Azure Speech-to-Text transcription (REPLACES WHISPER)
+    transcript_json = transcribe_with_azure(audio_path)
+
     ai_scores = {}
-    for seg in transcription.get("segments", []):
-        emotion = emotion_classifier(seg["text"])[0]
-        if emotion["label"].lower() in ["joy", "surprise", "excitement"]:
-            ai_scores[int(seg["start"])] = 3
+
+    if transcript_json:
+        # Azure returns a JSON with word-level timing + full text
+        detailed = transcript_json.get("NBest", [])[0] if "NBest" in transcript_json else None
+
+        if detailed and "Words" in detailed:
+            # Words includes start/end timestamps + text
+            for word_data in detailed["Words"]:
+                start_time = int(word_data["Offset"] / 10_000_000)   # convert 100ns → seconds
+                text = word_data["Word"]
+
+                # Emotion classification on each word OR buffer words (choose one)
+                emotion = emotion_classifier(text)[0]
+                label = emotion["label"].lower()
+
+                if label in ["joy", "surprise", "excitement"]:
+                    ai_scores[start_time] = 3
 
     # Combine scores
     combined = {}
@@ -189,16 +200,22 @@ def start_highlights(request):
     highlight_times = sorted(combined, key=lambda x: combined[x], reverse=True)[:10]
     highlight_times = sorted(highlight_times)
 
-    # Step 5: Generate highlight videos + thumbnails in Azure
+    # Step 5: Generate highlight videos + thumbnails uploaded to Azure
     progress = {"status": "generating highlights", "percent": 90}
-    highlights = make_highlights_multiple(video_path, highlight_times, clip_len=10, output_dir=output_dir)
 
-    # Step 6: Return Azure URLs directly (NO MEDIA_ROOT logic)
+    highlights = make_highlights_multiple(
+        video_path,
+        highlight_times,
+        clip_len=10,
+        output_dir=output_dir
+    )
+
+    # Prepare output list
     result = []
     for h in highlights:
         result.append({
-            "video": h["video"],        # already Azure URL
-            "thumbnail": h["thumbnail"] # already Azure URL
+            "video": h["video"],        # Azure URL
+            "thumbnail": h["thumbnail"] # Azure URL
         })
 
     # Cleanup

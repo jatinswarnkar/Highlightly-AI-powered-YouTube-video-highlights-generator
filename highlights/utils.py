@@ -8,6 +8,34 @@ import numpy as np
 from urllib.parse import urlparse, parse_qs
 import os
 import yt_dlp
+import azure.cognitiveservices.speech as speechsdk
+from django.conf import settings
+import json
+
+
+
+def transcribe_with_azure(audio_path):
+    speech_config = speechsdk.SpeechConfig(
+        subscription=settings.AZURE_SPEECH_KEY,
+        region=settings.AZURE_SPEECH_REGION
+    )
+
+    speech_config.request_word_level_timestamps()
+    speech_config.output_format = speechsdk.OutputFormat.Detailed
+
+    audio_input = speechsdk.AudioConfig(filename=audio_path)
+    recognizer = speechsdk.SpeechRecognizer(
+        speech_config=speech_config,
+        audio_config=audio_input
+    )
+
+    result = recognizer.recognize_once()
+
+    if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+        return json.loads(result.json)
+
+    return None
+
 
 def download_youtube(url: str) -> str:
     output_dir = "downloads"
