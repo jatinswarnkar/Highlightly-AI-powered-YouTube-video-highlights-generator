@@ -26,7 +26,8 @@ SECRET_KEY = 'django-insecure-%o-pnl0_*-h2iyw1+wdr!s0d9_dasmmd_@rd1(7a$frm(v&xd#
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["highlightly-demo.azurewebsites.net", "localhost", "127.0.0.1"]
+
 
 
 # Application definition
@@ -117,6 +118,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -132,4 +134,4 @@ AZURE_CONNECTION_STRING = os.getenv("AZURE_CONNECTION_STRING")
 AZURE_CONTAINER_NAME = "media"
 
 MEDIA_URL = f"https://highlightly.blob.core.windows.net/media/"
-MEDIA_ROOT = ""
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
