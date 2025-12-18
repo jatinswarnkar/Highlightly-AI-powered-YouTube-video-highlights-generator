@@ -45,5 +45,5 @@ torchaudio==2.0.2+cpu
 
 # WHISPER (works on Azure)
 openai-whisper==20231106
-
 transformers==4.33.3
+azure-storage-blob==12.19.0
