@@ -1,4 +1,4 @@
-# 🎬 AI Video Highlights Generator
+# 🎬 AI Video Highlights Generator [LIVE][https://highlightly-demo.azurewebsites.net/]
 
 Generate **short highlight reels** from videos (e.g., YouTube downloads) using AI + Django.  
 The app extracts highlight segments around key timestamps and merges them into a single **highlight reel**.  
@@ -7,7 +7,7 @@ The app extracts highlight segments around key timestamps and merges them into a
 
 ## ✨ Features
 - Upload or download a video (e.g., from YouTube).
-- Automatically create highlight clips around given timestamps.
+- Automatically create highlight clips around given timestamps using AI.
 - Concatenate clips into a **final highlight reel**.
 - Clean and futuristic **Django web UI**.
 
@@ -74,7 +74,6 @@ ai_highlights/
 ---
 
 ## 🔮 Roadmap
-- [ ] Add **automatic highlight detection** (AI-based, not just timestamps).  
 - [ ] Add transitions, watermarks, text overlays.  
 - [ ] Enable direct **Instagram/TikTok upload**.  
 - [ ] Drag-and-drop file upload UI.  
