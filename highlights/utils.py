@@ -1,25 +1,173 @@
+# import os
+# from pytube import YouTube
+# import ffmpeg
+# import cv2
+# import numpy as np
+# import subprocess
+# import numpy as np
+# from urllib.parse import urlparse, parse_qs
+# import os
+# import yt_dlp
+# import azure.cognitiveservices.speech as speechsdk
+# from django.conf import settings
+# import json
+
+
+
+# def transcribe_with_azure(audio_path):
+#     speech_config = speechsdk.SpeechConfig(
+#         subscription=settings.AZURE_SPEECH_KEY,
+#         region=settings.AZURE_SPEECH_REGION
+#     )
+
+#     speech_config.request_word_level_timestamps()
+#     speech_config.output_format = speechsdk.OutputFormat.Detailed
+
+#     audio_input = speechsdk.AudioConfig(filename=audio_path)
+#     recognizer = speechsdk.SpeechRecognizer(
+#         speech_config=speech_config,
+#         audio_config=audio_input
+#     )
+
+#     result = recognizer.recognize_once()
+
+#     if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+#         return json.loads(result.json)
+
+#     return None
+
+
+# def download_youtube(url: str) -> str:
+#     output_dir = "downloads"
+#     os.makedirs(output_dir, exist_ok=True)
+
+#     ydl_opts = {
+#         "format": "mp4",
+#         "outtmpl": os.path.join(output_dir, "%(title)s.%(ext)s"),
+#     }
+
+#     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+#         info = ydl.extract_info(url, download=True)
+#         return ydl.prepare_filename(info)
+
+# # Extract audio from video
+# def extract_audio(video_path, output_audio="media/audio.wav"):
+#     os.makedirs(os.path.dirname(output_audio), exist_ok=True)
+#     ffmpeg.input(video_path).output(output_audio, ac=1, ar=16000).run(overwrite_output=True)
+#     return output_audio
+
+# # Simple scene detection using frame differences
+# def detect_scenes(video_path, threshold=30.0):
+#     scenes = []
+#     cap = cv2.VideoCapture(video_path)
+#     fps = cap.get(cv2.CAP_PROP_FPS)
+#     prev_frame = None
+#     start = 0
+#     while True:
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#         if prev_frame is not None:
+#             diff = cv2.absdiff(gray, prev_frame)
+#             score = np.mean(diff)
+#             if score > threshold:
+#                 time = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+#                 scenes.append(time)
+#         prev_frame = gray
+#     cap.release()
+#     return scenes
+
+# # # Detect loud audio peaks
+# # def detect_audio_peaks(audio_path, top_k=5):
+# #     y, sr = librosa.load(audio_path)
+# #     energy = librosa.feature.rms(y=y)[0]
+# #     frames = np.argsort(energy)[-top_k:]
+# #     times = librosa.frames_to_time(frames, sr=sr)
+# #     return list(times)
+
+# def detect_audio_peaks(audio_path, top_k=5):
+#     """
+#     Detect top K loudest audio peaks using FFmpeg (no librosa needed).
+#     Returns timestamps (in seconds) of the detected peaks.
+#     """
+
+#     # FFmpeg command to extract per-frame RMS loudness
+#     cmd = [
+#         "ffmpeg",
+#         "-i", audio_path,
+#         "-af", "astats=metadata=1:reset=1",
+#         "-f", "null",
+#         "-"
+#     ]
+
+#     process = subprocess.Popen(
+#         cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True
+#     )
+
+#     rms_values = []
+#     timestamps = []
+
+#     # Parse RMS and timestamp from FFmpeg astats logs
+#     for line in process.stderr:
+#         if "RMS level" in line:
+#             try:
+#                 rms = float(line.split("RMS level:")[1].strip())
+#                 rms_values.append(rms)
+#             except:
+#                 pass
+
+#         if "Parsed_astats" in line and "pts_time" in line:
+#             try:
+#                 ts = float(line.split("pts_time:")[1].split()[0])
+#                 timestamps.append(ts)
+#             except:
+#                 pass
+
+#     process.wait()
+
+#     if not rms_values or not timestamps:
+#         return []
+
+#     rms_values = np.array(rms_values)
+#     timestamps = np.array(timestamps)
+
+#     # Get indices of top K loudest frames
+#     peak_indices = np.argsort(rms_values)[-top_k:]
+#     peak_times = timestamps[peak_indices]
+
+#     return sorted(peak_times.tolist())
+
+
+
+# # Cleanup temporary files
+# def cleanup_video(video_path):
+#     if os.path.exists(video_path):
+#         os.remove(video_path)
+#         print(f"Deleted original video: {video_path}")
+
+
 import os
-from pytube import YouTube
+import json
+import subprocess
 import ffmpeg
 import cv2
 import numpy as np
-import subprocess
-import numpy as np
-from urllib.parse import urlparse, parse_qs
-import os
 import yt_dlp
 import azure.cognitiveservices.speech as speechsdk
 from django.conf import settings
-import json
 
 
-
+# ==========================
+# Azure Speech-to-Text
+# ==========================
 def transcribe_with_azure(audio_path):
     speech_config = speechsdk.SpeechConfig(
         subscription=settings.AZURE_SPEECH_KEY,
         region=settings.AZURE_SPEECH_REGION
     )
 
+    speech_config.speech_recognition_language = "en-US"
     speech_config.request_word_level_timestamps()
     speech_config.output_format = speechsdk.OutputFormat.Detailed
 
@@ -37,62 +185,72 @@ def transcribe_with_azure(audio_path):
     return None
 
 
+# ==========================
+# YouTube Download (Azure Safe)
+# ==========================
 def download_youtube(url: str) -> str:
     output_dir = "downloads"
     os.makedirs(output_dir, exist_ok=True)
 
     ydl_opts = {
-        "format": "mp4",
-        "outtmpl": os.path.join(output_dir, "%(title)s.%(ext)s"),
+        "format": "bv*+ba/best",
+        "merge_output_format": "mp4",
+        "outtmpl": os.path.join(output_dir, "%(id)s.%(ext)s"),
+        "quiet": True,
+        "no_warnings": True,
+        "retries": 3,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         return ydl.prepare_filename(info)
 
-# Extract audio from video
-def extract_audio(video_path, output_audio="media/audio.wav"):
-    os.makedirs(os.path.dirname(output_audio), exist_ok=True)
-    ffmpeg.input(video_path).output(output_audio, ac=1, ar=16000).run(overwrite_output=True)
-    return output_audio
 
-# Simple scene detection using frame differences
+# ==========================
+# Extract Audio (per-job safe)
+# ==========================
+def extract_audio(video_path):
+    audio_path = video_path.replace(".mp4", "_audio.wav")
+    ffmpeg.input(video_path).output(
+        audio_path,
+        ac=1,
+        ar=16000
+    ).run(overwrite_output=True)
+    return audio_path
+
+
+# ==========================
+# Scene Detection
+# ==========================
 def detect_scenes(video_path, threshold=30.0):
     scenes = []
     cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
     prev_frame = None
-    start = 0
+
     while True:
         ret, frame = cap.read()
         if not ret:
             break
+
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
         if prev_frame is not None:
             diff = cv2.absdiff(gray, prev_frame)
             score = np.mean(diff)
             if score > threshold:
-                time = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-                scenes.append(time)
+                time_sec = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+                scenes.append(time_sec)
+
         prev_frame = gray
+
     cap.release()
     return scenes
 
-# # Detect loud audio peaks
-# def detect_audio_peaks(audio_path, top_k=5):
-#     y, sr = librosa.load(audio_path)
-#     energy = librosa.feature.rms(y=y)[0]
-#     frames = np.argsort(energy)[-top_k:]
-#     times = librosa.frames_to_time(frames, sr=sr)
-#     return list(times)
 
+# ==========================
+# Audio Peak Detection (FFmpeg)
+# ==========================
 def detect_audio_peaks(audio_path, top_k=5):
-    """
-    Detect top K loudest audio peaks using FFmpeg (no librosa needed).
-    Returns timestamps (in seconds) of the detected peaks.
-    """
-
-    # FFmpeg command to extract per-frame RMS loudness
     cmd = [
         "ffmpeg",
         "-i", audio_path,
@@ -102,46 +260,44 @@ def detect_audio_peaks(audio_path, top_k=5):
     ]
 
     process = subprocess.Popen(
-        cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True
+        cmd,
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        universal_newlines=True
     )
 
-    rms_values = []
-    timestamps = []
+    rms_times = []
 
-    # Parse RMS and timestamp from FFmpeg astats logs
     for line in process.stderr:
-        if "RMS level" in line:
+        if "RMS level" in line and "pts_time" in line:
             try:
-                rms = float(line.split("RMS level:")[1].strip())
-                rms_values.append(rms)
-            except:
-                pass
-
-        if "Parsed_astats" in line and "pts_time" in line:
-            try:
+                rms = float(line.split("RMS level:")[1].split()[0])
                 ts = float(line.split("pts_time:")[1].split()[0])
-                timestamps.append(ts)
+                rms_times.append((rms, ts))
             except:
                 pass
 
     process.wait()
 
-    if not rms_values or not timestamps:
+    if not rms_times:
         return []
 
-    rms_values = np.array(rms_values)
-    timestamps = np.array(timestamps)
+    rms_times.sort(key=lambda x: x[0])
+    peaks = [t for _, t in rms_times[-top_k:]]
 
-    # Get indices of top K loudest frames
-    peak_indices = np.argsort(rms_values)[-top_k:]
-    peak_times = timestamps[peak_indices]
+    # Deduplicate close peaks
+    peaks = sorted(set(int(p) for p in peaks))
 
-    return sorted(peak_times.tolist())
-
+    return peaks
 
 
-# Cleanup temporary files
+# ==========================
+# Cleanup
+# ==========================
 def cleanup_video(video_path):
     if os.path.exists(video_path):
         os.remove(video_path)
-        print(f"Deleted original video: {video_path}")
+
+    audio_path = video_path.replace(".mp4", "_audio.wav")
+    if os.path.exists(audio_path):
+        os.remove(audio_path)

@@ -105,29 +105,165 @@
 
 
 # highlights/views.py
+# import os
+# import uuid
+# from django.conf import settings
+# from django.shortcuts import render
+# from django.http import JsonResponse
+# from .utils import (
+#     download_youtube,
+#     extract_audio,
+#     detect_scenes,
+#     detect_audio_peaks,
+#     transcribe_with_azure,   # <-- NEW
+#     cleanup_video
+# )
+# from .highlight_generator import make_highlights_multiple
+
+# # Emotion classifier stays exactly the same
+# from transformers import pipeline
+# emotion_classifier = pipeline(
+#     "text-classification",
+#     model="bhadresh-savani/distilbert-base-uncased-emotion"
+# )
+
+# # Global progress dictionary
+# progress = {"status": "idle", "percent": 0}
+
+
+# def home(request):
+#     return render(request, "highlights/home.html")
+
+
+# def start_highlights(request):
+#     global progress
+#     url = request.GET.get("url")
+#     if not url:
+#         return JsonResponse({"error": "Please provide ?url="})
+
+#     # Unique folder for this job (for Azure prefix)
+#     uid = str(uuid.uuid4())[:8]
+#     output_dir = os.path.join(settings.MEDIA_ROOT, f"highlights_{uid}")
+#     os.makedirs(output_dir, exist_ok=True)
+
+#     # Step 1: Download video
+#     progress = {"status": "downloading", "percent": 10}
+#     video_path = download_youtube(url)
+
+#     # Step 2: Extract audio
+#     progress = {"status": "extracting audio", "percent": 30}
+#     audio_path = extract_audio(video_path)
+
+#     # Step 3: AI-based highlight scoring
+#     progress = {"status": "detecting highlights", "percent": 50}
+
+#     # 3A: Detect scenes
+#     scenes = detect_scenes(video_path)[:20]
+#     scene_scores = {int(t): 1 for t in scenes}
+
+#     # 3B: Detect audio peaks (FFmpeg based)
+#     peaks = detect_audio_peaks(audio_path, top_k=20)
+#     peak_scores = {int(t): 2 for t in peaks}
+
+#     # 3C: Azure Speech-to-Text transcription (REPLACES WHISPER)
+#     transcript_json = transcribe_with_azure(audio_path)
+
+#     ai_scores = {}
+
+#     if transcript_json:
+#         # Azure returns a JSON with word-level timing + full text
+#         detailed = transcript_json.get("NBest", [])[0] if "NBest" in transcript_json else None
+
+#         if detailed and "Words" in detailed:
+#             # Words includes start/end timestamps + text
+#             for word_data in detailed["Words"]:
+#                 start_time = int(word_data["Offset"] / 10_000_000)   # convert 100ns → seconds
+#                 text = word_data["Word"]
+
+#                 # Emotion classification on each word OR buffer words (choose one)
+#                 emotion = emotion_classifier(text)[0]
+#                 label = emotion["label"].lower()
+
+#                 if label in ["joy", "surprise", "excitement"]:
+#                     ai_scores[start_time] = 3
+
+#     # Combine scores
+#     combined = {}
+#     for t, score in scene_scores.items():
+#         combined[t] = combined.get(t, 0) + score
+#     for t, score in peak_scores.items():
+#         combined[t] = combined.get(t, 0) + score
+#     for t, score in ai_scores.items():
+#         combined[t] = combined.get(t, 0) + score
+
+#     # Choose top 10 highlight timestamps
+#     highlight_times = sorted(combined, key=lambda x: combined[x], reverse=True)[:10]
+#     highlight_times = sorted(highlight_times)
+
+#     # Step 5: Generate highlight videos + thumbnails uploaded to Azure
+#     progress = {"status": "generating highlights", "percent": 90}
+
+#     highlights = make_highlights_multiple(
+#         video_path,
+#         highlight_times,
+#         clip_len=10,
+#         output_dir=output_dir
+#     )
+
+#     # Prepare output list
+#     result = []
+#     for h in highlights:
+#         result.append({
+#             "video": h["video"],        # Azure URL
+#             "thumbnail": h["thumbnail"] # Azure URL
+#         })
+
+#     # Cleanup
+#     cleanup_video(video_path)
+
+#     progress = {"status": "done", "percent": 100}
+#     return JsonResponse({"highlights": result})
+
+
+# def check_progress(request):
+#     return JsonResponse(progress)
+
+
 import os
 import uuid
 from django.conf import settings
 from django.shortcuts import render
 from django.http import JsonResponse
+
 from .utils import (
     download_youtube,
     extract_audio,
     detect_scenes,
     detect_audio_peaks,
-    transcribe_with_azure,   # <-- NEW
+    transcribe_with_azure,
     cleanup_video
 )
+
 from .highlight_generator import make_highlights_multiple
 
-# Emotion classifier stays exactly the same
 from transformers import pipeline
+
+
+# =========================
+# CONFIG (REELS MODE)
+# =========================
+REEL_CONFIG = {
+    "clip_len": 7,      # Ideal for Shorts/Reels
+    "min_gap": 15,      # No overlapping highlights
+    "max_clips": 6,     # Quality > quantity
+}
+
+# Emotion classifier
 emotion_classifier = pipeline(
     "text-classification",
     model="bhadresh-savani/distilbert-base-uncased-emotion"
 )
 
-# Global progress dictionary
 progress = {"status": "idle", "percent": 0}
 
 
@@ -135,90 +271,139 @@ def home(request):
     return render(request, "highlights/home.html")
 
 
+# =========================
+# HIGHLIGHT SELECTION LOGIC
+# =========================
+def select_reel_highlights(scored_times):
+    """
+    Non-max suppression to avoid duplicate/nearby clips
+    """
+    selected = []
+    candidates = sorted(
+        scored_times.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    for t, score in candidates:
+        if all(abs(t - s) >= REEL_CONFIG["min_gap"] for s in selected):
+            selected.append(t)
+
+        if len(selected) >= REEL_CONFIG["max_clips"]:
+            break
+
+    return sorted(selected)
+
+
 def start_highlights(request):
     global progress
+
     url = request.GET.get("url")
     if not url:
         return JsonResponse({"error": "Please provide ?url="})
 
-    # Unique folder for this job (for Azure prefix)
     uid = str(uuid.uuid4())[:8]
     output_dir = os.path.join(settings.MEDIA_ROOT, f"highlights_{uid}")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Step 1: Download video
+    # =========================
+    # STEP 1: DOWNLOAD
+    # =========================
     progress = {"status": "downloading", "percent": 10}
     video_path = download_youtube(url)
 
-    # Step 2: Extract audio
+    # =========================
+    # STEP 2: AUDIO
+    # =========================
     progress = {"status": "extracting audio", "percent": 30}
     audio_path = extract_audio(video_path)
 
-    # Step 3: AI-based highlight scoring
+    # =========================
+    # STEP 3: SCORING SIGNALS
+    # =========================
     progress = {"status": "detecting highlights", "percent": 50}
 
-    # 3A: Detect scenes
+    # Scene detection (LOW weight)
     scenes = detect_scenes(video_path)[:20]
     scene_scores = {int(t): 1 for t in scenes}
 
-    # 3B: Detect audio peaks (FFmpeg based)
+    # Audio peaks (MEDIUM weight)
     peaks = detect_audio_peaks(audio_path, top_k=20)
-    peak_scores = {int(t): 2 for t in peaks}
+    peak_scores = {int(t): 3 for t in peaks}
 
-    # 3C: Azure Speech-to-Text transcription (REPLACES WHISPER)
+    # =========================
+    # EMOTION DETECTION (BUFFERED)
+    # =========================
     transcript_json = transcribe_with_azure(audio_path)
-
     ai_scores = {}
 
     if transcript_json:
-        # Azure returns a JSON with word-level timing + full text
-        detailed = transcript_json.get("NBest", [])[0] if "NBest" in transcript_json else None
+        detailed = transcript_json.get("NBest", [])
+        detailed = detailed[0] if detailed else None
 
         if detailed and "Words" in detailed:
-            # Words includes start/end timestamps + text
-            for word_data in detailed["Words"]:
-                start_time = int(word_data["Offset"] / 10_000_000)   # convert 100ns → seconds
-                text = word_data["Word"]
+            buffer_words = []
+            buffer_start = None
 
-                # Emotion classification on each word OR buffer words (choose one)
-                emotion = emotion_classifier(text)[0]
-                label = emotion["label"].lower()
+            for word in detailed["Words"]:
+                if buffer_start is None:
+                    buffer_start = word["Offset"]
 
-                if label in ["joy", "surprise", "excitement"]:
-                    ai_scores[start_time] = 3
+                buffer_words.append(word["Word"])
 
-    # Combine scores
+                # Analyze phrase chunks (6 words)
+                if len(buffer_words) >= 6:
+                    phrase = " ".join(buffer_words)
+                    emotion = emotion_classifier(phrase)[0]
+                    label = emotion["label"].lower()
+
+                    if label in ["joy", "surprise", "excitement"]:
+                        t = int(buffer_start / 10_000_000)
+                        ai_scores[t] = ai_scores.get(t, 0) + 4
+
+                    buffer_words = []
+                    buffer_start = None
+
+    # =========================
+    # COMBINE SCORES
+    # =========================
     combined = {}
-    for t, score in scene_scores.items():
-        combined[t] = combined.get(t, 0) + score
-    for t, score in peak_scores.items():
-        combined[t] = combined.get(t, 0) + score
-    for t, score in ai_scores.items():
-        combined[t] = combined.get(t, 0) + score
 
-    # Choose top 10 highlight timestamps
-    highlight_times = sorted(combined, key=lambda x: combined[x], reverse=True)[:10]
-    highlight_times = sorted(highlight_times)
+    for t, s in scene_scores.items():
+        combined[t] = combined.get(t, 0) + s
 
-    # Step 5: Generate highlight videos + thumbnails uploaded to Azure
+    for t, s in peak_scores.items():
+        combined[t] = combined.get(t, 0) + s
+
+    for t, s in ai_scores.items():
+        combined[t] = combined.get(t, 0) + s
+
+    # =========================
+    # REEL OPTIMIZED SELECTION
+    # =========================
+    highlight_times = select_reel_highlights(combined)
+
+    # =========================
+    # GENERATE CLIPS (CENTERED)
+    # =========================
     progress = {"status": "generating highlights", "percent": 90}
 
     highlights = make_highlights_multiple(
         video_path,
         highlight_times,
-        clip_len=10,
-        output_dir=output_dir
+        clip_len=REEL_CONFIG["clip_len"],
+        output_dir=output_dir,
+        center=True   # IMPORTANT: center clip around peak
     )
 
-    # Prepare output list
-    result = []
-    for h in highlights:
-        result.append({
-            "video": h["video"],        # Azure URL
-            "thumbnail": h["thumbnail"] # Azure URL
-        })
+    result = [
+        {
+            "video": h["video"],
+            "thumbnail": h["thumbnail"]
+        }
+        for h in highlights
+    ]
 
-    # Cleanup
     cleanup_video(video_path)
 
     progress = {"status": "done", "percent": 100}
