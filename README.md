@@ -1,4 +1,4 @@
-# 🎬 AI Video Highlights Generator [LIVE](https://highlightly-demo.azurewebsites.net/)
+# 🎬 AI Video Highlights Generator                                                        [LIVE](https://highlightly-demo.azurewebsites.net/)
 
 Generate **short highlight reels** from videos (e.g., YouTube downloads) using AI + Django.  
 The app extracts highlight segments around key timestamps and merges them into a single **highlight reel**.  
