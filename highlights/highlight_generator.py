@@ -8,8 +8,7 @@ def make_highlights_multiple(
     highlight_times,
     clip_len=10,
     output_dir="media",
-    center=True,
-    min_gap=6   # 🔥 NEW: minimum seconds between clips
+    center=True
 ):
     """
     Generates highlight clips optimized for Reels/Shorts.
@@ -23,15 +22,8 @@ def make_highlights_multiple(
     highlights = []
     folder_name = os.path.basename(output_dir.rstrip("/"))
 
-    last_used_time = -999  # for deduplication
-
-    for i, t in enumerate(sorted(highlight_times)):
-
-        # 🔥 Skip timestamps too close to previous clip
-        if abs(t - last_used_time) < min_gap:
-            continue
-
-        last_used_time = t
+    for i, t in enumerate(highlight_times):
+        # 🔥 Skip if too close to previous highlight
 
         # Center clip around event
         start = max(0, t - clip_len // 2) if center else t

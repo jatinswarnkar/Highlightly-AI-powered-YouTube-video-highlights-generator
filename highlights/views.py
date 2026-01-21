@@ -383,6 +383,13 @@ def start_highlights(request):
     # =========================
     highlight_times = select_reel_highlights(combined)
 
+    VIDEO_PADDING = 2  # seconds
+    
+    highlight_times = [
+        max(VIDEO_PADDING, t)
+        for t in highlight_times
+    ]
+
     # =========================
     # GENERATE CLIPS (CENTERED)
     # =========================
