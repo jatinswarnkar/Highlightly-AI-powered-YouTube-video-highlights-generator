@@ -161,6 +161,35 @@ from django.conf import settings
 # ==========================
 # Azure Speech-to-Text
 # ==========================
+# def transcribe_with_azure(audio_path):
+#     speech_config = speechsdk.SpeechConfig(
+#         subscription=settings.AZURE_SPEECH_KEY,
+#         region=settings.AZURE_SPEECH_REGION
+#     )
+
+#     speech_config.speech_recognition_language = "en-US"
+#     speech_config.request_word_level_timestamps()
+#     speech_config.output_format = speechsdk.OutputFormat.Detailed
+
+#     audio_input = speechsdk.AudioConfig(filename=audio_path)
+#     recognizer = speechsdk.SpeechRecognizer(
+#         speech_config=speech_config,
+#         audio_config=audio_input
+#     )
+
+#     result = recognizer.recognize_once()
+
+#     if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+#         return json.loads(result.json)
+
+#     return None
+
+import time
+import json
+import azure.cognitiveservices.speech as speechsdk
+from django.conf import settings
+
+
 def transcribe_with_azure(audio_path):
     speech_config = speechsdk.SpeechConfig(
         subscription=settings.AZURE_SPEECH_KEY,
@@ -177,28 +206,90 @@ def transcribe_with_azure(audio_path):
         audio_config=audio_input
     )
 
-    result = recognizer.recognize_once()
+    collected_words = []
+    done = False
 
-    if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-        return json.loads(result.json)
+    def recognized_handler(evt):
+        if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            try:
+                data = json.loads(evt.result.json)
+                nbest = data.get("NBest", [])
+                if nbest and "Words" in nbest[0]:
+                    collected_words.extend(nbest[0]["Words"])
+            except Exception:
+                pass
 
-    return None
+    def stop_handler(evt):
+        nonlocal done
+        done = True
+
+    recognizer.recognized.connect(recognized_handler)
+    recognizer.session_stopped.connect(stop_handler)
+    recognizer.canceled.connect(stop_handler)
+
+    recognizer.start_continuous_recognition()
+
+    # ✅ BLOCK UNTIL FINISHED (SAFE)
+    while not done:
+        time.sleep(0.2)
+
+    recognizer.stop_continuous_recognition()
+
+    if not collected_words:
+        return None
+
+    # Normalize output to match your pipeline
+    return {
+        "NBest": [
+            {
+                "Words": collected_words
+            }
+        ]
+    }
+
 
 
 # ==========================
 # YouTube Download (Azure Safe)
 # ==========================
+# def download_youtube(url: str) -> str:
+#     output_dir = "downloads"
+#     os.makedirs(output_dir, exist_ok=True)
+
+#     ydl_opts = {
+#         "format": "bv*+ba/best",
+#         "merge_output_format": "mp4",
+#         "outtmpl": os.path.join(output_dir, "%(id)s.%(ext)s"),
+#         "quiet": True,
+#         "no_warnings": True,
+#         "retries": 3,
+#     }
+
+#     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+#         info = ydl.extract_info(url, download=True)
+#         return ydl.prepare_filename(info)
+
 def download_youtube(url: str) -> str:
-    output_dir = "downloads"
+    output_dir = "/tmp/downloads"
     os.makedirs(output_dir, exist_ok=True)
 
     ydl_opts = {
-        "format": "bv*+ba/best",
-        "merge_output_format": "mp4",
+        # Best-effort MP4
+        "format": "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]",
         "outtmpl": os.path.join(output_dir, "%(id)s.%(ext)s"),
+
+        # Stability flags
         "quiet": True,
         "no_warnings": True,
-        "retries": 3,
+        "noplaylist": True,
+        "geo_bypass": True,
+
+        # 🔥 KEY FIX: Android client avoids most bot checks
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android"]
+            }
+        },
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -301,3 +392,46 @@ def cleanup_video(video_path):
     audio_path = video_path.replace(".mp4", "_audio.wav")
     if os.path.exists(audio_path):
         os.remove(audio_path)
+
+
+def escape_text(text: str) -> str:
+    return (
+        text.replace("\\", "\\\\")
+            .replace(":", "\\:")
+            .replace("'", "\\'")
+            .replace("%", "\\%")
+            .replace(",", "\\,")
+    )
+
+
+def extract_words_for_clip(transcript_json, clip_start, clip_end):
+    """
+    Returns word-level captions normalized to clip time.
+    """
+    if not transcript_json:
+        return []
+
+    nbest = transcript_json.get("NBest", [])
+    if not nbest:
+        return []
+
+    words = nbest[0].get("Words", [])
+    result = []
+
+    for w in words:
+        start = w["Offset"] / 10_000_000
+        end = (w["Offset"] + w["Duration"]) / 10_000_000
+
+        if end < clip_start or start > clip_end:
+            continue
+
+        result.append({
+            "text": w["Word"],
+            "start": max(0, start - clip_start),
+            "end": min(clip_end - clip_start, end - clip_start),
+        })
+
+    return result
+
+def clamp_time(t, max_t):
+    return max(0, min(round(t, 2), round(max_t, 2)))

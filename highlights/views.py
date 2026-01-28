@@ -234,6 +234,8 @@ import uuid
 from django.conf import settings
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
 
 from .utils import (
     download_youtube,
@@ -253,7 +255,7 @@ from transformers import pipeline
 # CONFIG (REELS MODE)
 # =========================
 REEL_CONFIG = {
-    "clip_len": 7,      # Ideal for Shorts/Reels
+    "clip_len": 10,      # Ideal for Shorts/Reels
     "min_gap": 15,      # No overlapping highlights
     "max_clips": 6,     # Quality > quantity
 }
@@ -298,9 +300,11 @@ def select_reel_highlights(scored_times):
 def start_highlights(request):
     global progress
 
-    url = request.GET.get("url")
-    if not url:
-        return JsonResponse({"error": "Please provide ?url="})
+    uploaded_file = request.FILES.get("file")
+    url = request.POST.get("url")
+
+    if not uploaded_file and not url:
+        return JsonResponse({"error": "Provide a link or upload a video"}, status=400)
 
     uid = str(uuid.uuid4())[:8]
     output_dir = os.path.join(settings.MEDIA_ROOT, f"highlights_{uid}")
@@ -310,7 +314,19 @@ def start_highlights(request):
     # STEP 1: DOWNLOAD
     # =========================
     progress = {"status": "downloading", "percent": 10}
-    video_path = download_youtube(url)
+    if uploaded_file:
+        video_path = os.path.join("/tmp", uploaded_file.name)
+        with open(video_path, "wb+") as f:
+            for chunk in uploaded_file.chunks():
+                f.write(chunk)
+    else:
+        try:
+            video_path = download_youtube(url)
+        except Exception:
+            return JsonResponse(
+                {"error": "YouTube blocked this video. Please upload the file instead."},
+                status=400
+            )
 
     # =========================
     # STEP 2: AUDIO
@@ -396,12 +412,13 @@ def start_highlights(request):
     progress = {"status": "generating highlights", "percent": 90}
 
     highlights = make_highlights_multiple(
-        video_path,
-        highlight_times,
-        clip_len=REEL_CONFIG["clip_len"],
-        output_dir=output_dir,
-        center=True   # IMPORTANT: center clip around peak
-    )
+                video_path,
+                highlight_times,
+                transcript_json=transcript_json,
+                clip_len=REEL_CONFIG["clip_len"],
+                output_dir=output_dir,
+                center=True,
+            )
 
     result = [
         {
