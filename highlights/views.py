@@ -248,8 +248,9 @@ from .utils import (
 
 from .highlight_generator import make_highlights_multiple
 
-from transformers import pipeline
+#from transformers import pipeline
 
+from highlights.ml_models import EMOTION_MODEL as emotion_classifier
 
 # =========================
 # CONFIG (REELS MODE)
@@ -261,10 +262,10 @@ REEL_CONFIG = {
 }
 
 # Emotion classifier
-emotion_classifier = pipeline(
-    "text-classification",
-    model="bhadresh-savani/distilbert-base-uncased-emotion"
-)
+# emotion_classifier = pipeline(
+#     "text-classification",
+#     model="bhadresh-savani/distilbert-base-uncased-emotion"
+# )
 
 progress = {"status": "idle", "percent": 0}
 
