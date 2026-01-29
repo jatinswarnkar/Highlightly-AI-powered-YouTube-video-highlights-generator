@@ -234,7 +234,6 @@ import uuid
 from django.conf import settings
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 
 from .utils import (
@@ -299,7 +298,6 @@ def select_reel_highlights(scored_times):
 
     return sorted(selected)
 
-@csrf_exempt
 def start_highlights(request):
     global progress
 
