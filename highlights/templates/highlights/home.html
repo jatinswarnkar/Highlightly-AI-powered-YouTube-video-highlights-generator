@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Highlightly — AI Video Highlights</title>
+  <title>Highlightly — AI Shorts Generator</title>
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -11,129 +11,141 @@
   <script defer src="https://unpkg.com/alpinejs"></script>
 </head>
 
-<body
-  class="bg-gradient-to-r from-slate-900 via-gray-800 to-slate-900 min-h-screen flex items-center justify-center"
->
+<body class="bg-[#0B0F1A] text-white min-h-screen">
 
-  <!-- CSRF TOKEN (REQUIRED FOR POST) -->
+  <!-- CSRF -->
   <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 
-  <div
-    class="w-full max-w-3xl p-8 rounded-3xl shadow-xl bg-white/10 backdrop-blur-lg border border-white/20 text-white"
-    x-data="highlightApp()"
-  >
-
-    <!-- HEADER -->
-    <h1 class="text-4xl font-bold text-center mb-4 tracking-wide">
+  <!-- NAV -->
+  <nav class="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
+    <div class="text-2xl font-extrabold tracking-tight">
       ⚡ Highlightly
+    </div>
+    <div class="space-x-4 text-sm text-gray-300">
+      <span class="opacity-80">Free Trial</span>
+      <span class="opacity-40">|</span>
+      <span class="opacity-80">Login</span>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="max-w-5xl mx-auto px-6 text-center mt-16">
+    <h1 class="text-5xl font-extrabold leading-tight">
+      Turn long videos into<br>
+      <span class="text-indigo-400">viral Shorts & Reels</span>
     </h1>
 
-    <p class="text-gray-300 text-center mb-8">
-      Paste a YouTube link <b>or</b> upload a video — get viral-ready highlights.
+    <p class="mt-6 text-gray-400 text-lg">
+      AI finds the best moments, adds captions, and exports
+      ready-to-post clips for Instagram, YouTube & TikTok.
     </p>
 
-    <!-- YOUTUBE URL -->
-    <div class="mb-4">
-      <input
-        type="text"
-        x-model="url"
-        placeholder="YouTube URL (optional)"
-        class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-600
-               focus:ring-2 focus:ring-indigo-400 outline-none
-               text-white placeholder-gray-400"
-      >
+    <div class="mt-6 text-sm text-gray-500">
+      🎬 Used by creators • ⚡ No editing skills required • 🚀 Publish faster
     </div>
+  </section>
 
-    <!-- OR DIVIDER -->
-    <div class="flex items-center my-4 text-gray-400">
-      <div class="flex-1 h-px bg-slate-600"></div>
-      <span class="px-3 text-sm">OR</span>
-      <div class="flex-1 h-px bg-slate-600"></div>
-    </div>
+  <!-- APP -->
+  <section
+    class="max-w-4xl mx-auto px-6 mt-16"
+    x-data="highlightApp()"
+  >
+    <div class="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
 
-    <!-- FILE UPLOAD -->
-    <div class="mb-6">
-      <input
-        type="file"
-        accept="video/*"
-        @change="file = $event.target.files[0]"
-        class="w-full px-4 py-3 rounded-xl bg-slate-800
-               border border-slate-600 text-white"
-      >
-      <p class="text-xs text-gray-400 mt-1">
-        MP4, MOV, MKV — size depends on server plan
-      </p>
-    </div>
+      <!-- INPUT -->
+      <div class="space-y-5">
 
-    <!-- SUBMIT -->
-    <button
-      @click="start()"
-      :disabled="loading"
-      class="w-full bg-indigo-600 hover:bg-indigo-500
-             disabled:opacity-60 text-white py-3
-             rounded-xl font-semibold transition"
-    >
-      🎬 Generate Highlights
-    </button>
+        <input
+          type="text"
+          x-model="url"
+          placeholder="Paste YouTube URL (recommended)"
+          class="w-full px-5 py-4 rounded-xl bg-[#11162A]
+                 border border-white/10
+                 focus:ring-2 focus:ring-indigo-500 outline-none"
+        >
 
-    <!-- LOADER -->
-    <div class="mt-6 text-center" x-show="loading">
-      <svg
-        class="animate-spin h-12 w-12 mx-auto text-indigo-500"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle class="opacity-25" cx="12" cy="12" r="10"
-                stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor"
-              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-      </svg>
-      <p class="text-gray-400 mt-2">
-        Processing video… this may take a minute ⏳
-      </p>
-    </div>
+        <div class="text-center text-gray-500 text-sm">OR</div>
 
-    <!-- RESULTS -->
-    <div
-      class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6"
-      x-show="highlights.length > 0"
-    >
-      <template x-for="highlight in highlights" :key="highlight.video">
-        <div class="bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+        <input
+          type="file"
+          accept="video/*"
+          @change="file = $event.target.files[0]"
+          class="w-full px-5 py-4 rounded-xl bg-[#11162A]
+                 border border-white/10"
+        >
 
-          <video class="w-full h-48 object-cover" controls preload="metadata">
-            <source :src="highlight.video" type="video/mp4">
-          </video>
+        <button
+          @click="start()"
+          :disabled="loading"
+          class="w-full bg-indigo-600 hover:bg-indigo-500
+                 disabled:opacity-50
+                 py-4 rounded-xl font-semibold text-lg transition"
+        >
+          🚀 Generate Highlights
+        </button>
 
-          <div class="p-4 flex justify-between items-center">
-            <span class="text-sm text-gray-200 truncate">
-              AI Highlight
-            </span>
+        <p class="text-xs text-gray-400 text-center">
+          Free plan: up to 3 highlights • Pro unlocks unlimited clips
+        </p>
+      </div>
 
-            <a
-              :href="highlight.video"
-              download
-              class="bg-emerald-500 hover:bg-emerald-400
-                     px-4 py-2 rounded-xl
-                     font-bold text-white text-sm"
-            >
-              ⬇ Download
-            </a>
-          </div>
+      <!-- LOADING -->
+      <div x-show="loading" class="mt-10 text-center">
+        <div class="animate-spin h-12 w-12 mx-auto border-4 border-indigo-500 border-t-transparent rounded-full"></div>
 
+        <p class="mt-4 text-gray-400">
+          Analyzing video, finding viral moments, rendering captions…
+        </p>
+
+        <div class="mt-2 text-xs text-gray-500">
+          This usually takes 30–90 seconds
         </div>
-      </template>
-    </div>
+      </div>
 
-  </div>
+      <!-- RESULTS -->
+      <div
+        x-show="highlights.length > 0"
+        class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6"
+      >
+        <template x-for="highlight in highlights" :key="highlight.video">
+          <div class="bg-[#11162A] rounded-2xl overflow-hidden border border-white/10">
+
+            <video class="w-full h-56 object-cover" controls preload="metadata">
+              <source :src="highlight.video" type="video/mp4">
+            </video>
+
+            <div class="p-4 flex justify-between items-center">
+              <span class="text-sm text-gray-300">
+                AI Highlight
+              </span>
+
+              <a
+                :href="highlight.video"
+                download
+                class="bg-emerald-500 hover:bg-emerald-400
+                       px-4 py-2 rounded-lg text-sm font-bold"
+              >
+                ⬇ Download
+              </a>
+            </div>
+          </div>
+        </template>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="mt-24 pb-12 text-center text-gray-500 text-sm">
+    © 2026 Highlightly • Built for creators •
+    <span class="text-gray-400">Privacy</span> •
+    <span class="text-gray-400">Terms</span>
+  </footer>
 
   <!-- APP LOGIC -->
   <script>
     function getCSRFToken() {
-      return document.querySelector(
-        '[name=csrfmiddlewaretoken]'
-      ).value;
+      return document.querySelector('[name=csrfmiddlewaretoken]').value;
     }
 
     function highlightApp() {
@@ -145,7 +157,7 @@
 
         async start() {
           if (!this.url && !this.file) {
-            alert("Please provide a YouTube link or upload a video.");
+            alert("Please paste a YouTube link or upload a video.");
             return;
           }
 
@@ -157,7 +169,7 @@
           if (this.file) formData.append("file", this.file);
 
           try {
-            const response = await fetch("/start/", {
+            const res = await fetch("/start/", {
               method: "POST",
               headers: {
                 "X-CSRFToken": getCSRFToken()
@@ -165,21 +177,18 @@
               body: formData
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(data.error || "Failed to process video");
-            }
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed");
 
             this.highlights = data.highlights || [];
 
-          } catch (err) {
-            alert(err.message);
+          } catch (e) {
+            alert(e.message);
           } finally {
             this.loading = false;
           }
         }
-      };
+      }
     }
   </script>
 

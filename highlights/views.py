@@ -251,6 +251,8 @@ from .highlight_generator import make_highlights_multiple
 #from transformers import pipeline
 
 from highlights.ml_models import EMOTION_MODEL as emotion_classifier
+from django.views.decorators.csrf import csrf_exempt
+
 
 # =========================
 # CONFIG (REELS MODE)
@@ -297,7 +299,7 @@ def select_reel_highlights(scored_times):
 
     return sorted(selected)
 
-
+@csrf_exempt
 def start_highlights(request):
     global progress
 
