@@ -31,7 +31,8 @@ ALLOWED_HOSTS = ["highlightly-demo.azurewebsites.net",
                   "localhost",
                   "127.0.0.1",
                   "169.254.129.2",
-                  "169.254.129.1",]
+                  "169.254.129.1",
+                  "169.254.130.3",]
 
 
 
@@ -150,3 +151,16 @@ AZURE_CONTAINER_NAME = "media"
 
 MEDIA_URL = f"https://highlightly.blob.core.windows.net/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+
+import os
+
+HF_HOME = os.environ.get(
+    "HF_HOME",
+    os.path.join(BASE_DIR, ".hf_cache")
+)
+
+TRANSFORMERS_CACHE = os.environ.get(
+    "TRANSFORMERS_CACHE",
+    HF_HOME
+)
