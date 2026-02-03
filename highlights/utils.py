@@ -147,20 +147,49 @@
 #         print(f"Deleted original video: {video_path}")
 
 
-import os
-import json
-import subprocess
-import ffmpeg
-import cv2
-import numpy as np
-import yt_dlp
-import azure.cognitiveservices.speech as speechsdk
-from django.conf import settings
+# import os
+# import json
+# import subprocess
+# import ffmpeg
+# import cv2
+# import numpy as np
+# import yt_dlp
+# import azure.cognitiveservices.speech as speechsdk
+# from django.conf import settings
 
 
-# ==========================
-# Azure Speech-to-Text
-# ==========================
+# # ==========================
+# # Azure Speech-to-Text
+# # ==========================
+# # def transcribe_with_azure(audio_path):
+# #     speech_config = speechsdk.SpeechConfig(
+# #         subscription=settings.AZURE_SPEECH_KEY,
+# #         region=settings.AZURE_SPEECH_REGION
+# #     )
+
+# #     speech_config.speech_recognition_language = "en-US"
+# #     speech_config.request_word_level_timestamps()
+# #     speech_config.output_format = speechsdk.OutputFormat.Detailed
+
+# #     audio_input = speechsdk.AudioConfig(filename=audio_path)
+# #     recognizer = speechsdk.SpeechRecognizer(
+# #         speech_config=speech_config,
+# #         audio_config=audio_input
+# #     )
+
+# #     result = recognizer.recognize_once()
+
+# #     if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+# #         return json.loads(result.json)
+
+# #     return None
+
+# import time
+# import json
+# import azure.cognitiveservices.speech as speechsdk
+# from django.conf import settings
+
+
 # def transcribe_with_azure(audio_path):
 #     speech_config = speechsdk.SpeechConfig(
 #         subscription=settings.AZURE_SPEECH_KEY,
@@ -177,75 +206,46 @@ from django.conf import settings
 #         audio_config=audio_input
 #     )
 
-#     result = recognizer.recognize_once()
+#     collected_words = []
+#     done = False
 
-#     if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-#         return json.loads(result.json)
+#     def recognized_handler(evt):
+#         if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+#             try:
+#                 data = json.loads(evt.result.json)
+#                 nbest = data.get("NBest", [])
+#                 if nbest and "Words" in nbest[0]:
+#                     collected_words.extend(nbest[0]["Words"])
+#             except Exception:
+#                 pass
 
-#     return None
+#     def stop_handler(evt):
+#         nonlocal done
+#         done = True
 
-import time
-import json
-import azure.cognitiveservices.speech as speechsdk
-from django.conf import settings
+#     recognizer.recognized.connect(recognized_handler)
+#     recognizer.session_stopped.connect(stop_handler)
+#     recognizer.canceled.connect(stop_handler)
 
+#     recognizer.start_continuous_recognition()
 
-def transcribe_with_azure(audio_path):
-    speech_config = speechsdk.SpeechConfig(
-        subscription=settings.AZURE_SPEECH_KEY,
-        region=settings.AZURE_SPEECH_REGION
-    )
+#     # ✅ BLOCK UNTIL FINISHED (SAFE)
+#     while not done:
+#         time.sleep(0.2)
 
-    speech_config.speech_recognition_language = "en-US"
-    speech_config.request_word_level_timestamps()
-    speech_config.output_format = speechsdk.OutputFormat.Detailed
+#     recognizer.stop_continuous_recognition()
 
-    audio_input = speechsdk.AudioConfig(filename=audio_path)
-    recognizer = speechsdk.SpeechRecognizer(
-        speech_config=speech_config,
-        audio_config=audio_input
-    )
+#     if not collected_words:
+#         return None
 
-    collected_words = []
-    done = False
-
-    def recognized_handler(evt):
-        if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
-            try:
-                data = json.loads(evt.result.json)
-                nbest = data.get("NBest", [])
-                if nbest and "Words" in nbest[0]:
-                    collected_words.extend(nbest[0]["Words"])
-            except Exception:
-                pass
-
-    def stop_handler(evt):
-        nonlocal done
-        done = True
-
-    recognizer.recognized.connect(recognized_handler)
-    recognizer.session_stopped.connect(stop_handler)
-    recognizer.canceled.connect(stop_handler)
-
-    recognizer.start_continuous_recognition()
-
-    # ✅ BLOCK UNTIL FINISHED (SAFE)
-    while not done:
-        time.sleep(0.2)
-
-    recognizer.stop_continuous_recognition()
-
-    if not collected_words:
-        return None
-
-    # Normalize output to match your pipeline
-    return {
-        "NBest": [
-            {
-                "Words": collected_words
-            }
-        ]
-    }
+#     # Normalize output to match your pipeline
+#     return {
+#         "NBest": [
+#             {
+#                 "Words": collected_words
+#             }
+#         ]
+#     }
 
 
 
@@ -269,22 +269,73 @@ def transcribe_with_azure(audio_path):
 #         info = ydl.extract_info(url, download=True)
 #         return ydl.prepare_filename(info)
 
+import os
+import json
+import uuid
+import time
+import subprocess
+import cv2
+import numpy as np
+import yt_dlp
+import azure.cognitiveservices.speech as speechsdk
+from django.conf import settings
+
+
+# =====================================================
+# AZURE TRANSCRIPTION (BLOCKING + SAFE)
+# =====================================================
+def transcribe_with_azure(audio_path: str):
+    speech_config = speechsdk.SpeechConfig(
+        subscription=settings.AZURE_SPEECH_KEY,
+        region=settings.AZURE_SPEECH_REGION,
+    )
+
+    speech_config.speech_recognition_language = "en-US"
+    speech_config.request_word_level_timestamps()
+    speech_config.output_format = speechsdk.OutputFormat.Detailed
+
+    audio_input = speechsdk.AudioConfig(filename=audio_path)
+    recognizer = speechsdk.SpeechRecognizer(
+        speech_config=speech_config,
+        audio_config=audio_input,
+    )
+
+    # ✅ SAFE: single blocking call
+    result = recognizer.recognize_once()
+
+    if result.reason != speechsdk.ResultReason.RecognizedSpeech:
+        return None
+
+    try:
+        data = json.loads(result.json)
+        nbest = data.get("NBest", [])
+        if not nbest:
+            return None
+
+        return {
+            "NBest": [
+                {
+                    "Words": nbest[0].get("Words", [])
+                }
+            ]
+        }
+    except Exception:
+        return None
+
+
+# =====================================================
+# YOUTUBE DOWNLOAD (BOT-SAFE)
+# =====================================================
 def download_youtube(url: str) -> str:
     output_dir = "/tmp/downloads"
     os.makedirs(output_dir, exist_ok=True)
 
     ydl_opts = {
-        # Best-effort MP4
         "format": "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]",
         "outtmpl": os.path.join(output_dir, "%(id)s.%(ext)s"),
-
-        # Stability flags
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
-        "geo_bypass": True,
-
-        # 🔥 KEY FIX: Android client avoids most bot checks
         "extractor_args": {
             "youtube": {
                 "player_client": ["android"]
@@ -297,22 +348,37 @@ def download_youtube(url: str) -> str:
         return ydl.prepare_filename(info)
 
 
-# ==========================
-# Extract Audio (per-job safe)
-# ==========================
-def extract_audio(video_path):
-    audio_path = video_path.replace(".mp4", "_audio.wav")
-    ffmpeg.input(video_path).output(
+# =====================================================
+# AUDIO EXTRACTION (NO ffmpeg-python)
+# =====================================================
+def extract_audio(video_path: str) -> str:
+    audio_path = f"/tmp/{uuid.uuid4().hex}.wav"
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i", video_path,
+        "-ac", "1",
+        "-ar", "16000",
         audio_path,
-        ac=1,
-        ar=16000
-    ).run(overwrite_output=True)
+    ]
+
+    subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=True,
+    )
+
+    if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
+        raise RuntimeError("Audio extraction failed")
+
     return audio_path
 
 
-# ==========================
-# Scene Detection
-# ==========================
+# =====================================================
+# SCENE DETECTION
+# =====================================================
 def detect_scenes(video_path, threshold=30.0):
     scenes = []
     cap = cv2.VideoCapture(video_path)
@@ -329,8 +395,7 @@ def detect_scenes(video_path, threshold=30.0):
             diff = cv2.absdiff(gray, prev_frame)
             score = np.mean(diff)
             if score > threshold:
-                time_sec = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-                scenes.append(time_sec)
+                scenes.append(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0)
 
         prev_frame = gray
 
@@ -338,9 +403,9 @@ def detect_scenes(video_path, threshold=30.0):
     return scenes
 
 
-# ==========================
-# Audio Peak Detection (FFmpeg)
-# ==========================
+# =====================================================
+# AUDIO PEAKS (RAW FFmpeg)
+# =====================================================
 def detect_audio_peaks(audio_path, top_k=5):
     cmd = [
         "ffmpeg",
@@ -350,48 +415,43 @@ def detect_audio_peaks(audio_path, top_k=5):
         "-"
     ]
 
-    process = subprocess.Popen(
+    proc = subprocess.Popen(
         cmd,
         stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        universal_newlines=True
+        stdout=subprocess.DEVNULL,
+        text=True
     )
 
-    rms_times = []
+    peaks = []
 
-    for line in process.stderr:
+    for line in proc.stderr:
         if "RMS level" in line and "pts_time" in line:
             try:
                 rms = float(line.split("RMS level:")[1].split()[0])
                 ts = float(line.split("pts_time:")[1].split()[0])
-                rms_times.append((rms, ts))
+                peaks.append((rms, ts))
             except:
                 pass
 
-    process.wait()
+    proc.wait()
 
-    if not rms_times:
+    if not peaks:
         return []
 
-    rms_times.sort(key=lambda x: x[0])
-    peaks = [t for _, t in rms_times[-top_k:]]
-
-    # Deduplicate close peaks
-    peaks = sorted(set(int(p) for p in peaks))
-
-    return peaks
+    peaks.sort(key=lambda x: x[0])
+    return [int(t) for _, t in peaks[-top_k:]]
 
 
-# ==========================
-# Cleanup
-# ==========================
+# =====================================================
+# CLEANUP
+# =====================================================
 def cleanup_video(video_path):
-    if os.path.exists(video_path):
-        os.remove(video_path)
+    try:
+        if os.path.exists(video_path):
+            os.remove(video_path)
+    except:
+        pass
 
-    audio_path = video_path.replace(".mp4", "_audio.wav")
-    if os.path.exists(audio_path):
-        os.remove(audio_path)
 
 
 def escape_text(text: str) -> str:

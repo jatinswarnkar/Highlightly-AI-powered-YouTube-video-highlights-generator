@@ -93,9 +93,19 @@
       <div x-show="loading" class="mt-10 text-center">
         <div class="animate-spin h-12 w-12 mx-auto border-4 border-indigo-500 border-t-transparent rounded-full"></div>
 
-        <p class="mt-4 text-gray-400">
-          Analyzing video, finding viral moments, rendering captions…
-        </p>
+        <p class="mt-4 text-gray-400" x-text="progressText"></p>
+
+        <div class="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+          <div
+            class="h-full bg-indigo-500 transition-all duration-500"
+            :style="`width: ${progressPercent}%`"
+          ></div>
+        </div>
+
+        <div class="mt-2 text-xs text-gray-500">
+          <span x-text="progressPercent"></span>% complete
+        </div>
+
 
         <div class="mt-2 text-xs text-gray-500">
           This usually takes 30–90 seconds
@@ -147,28 +157,35 @@
     function getCSRFToken() {
       return document.querySelector('[name=csrfmiddlewaretoken]').value;
     }
-
+  
     function highlightApp() {
       return {
         url: "",
         file: null,
         loading: false,
         highlights: [],
-
+        progressText: "",
+        progressPercent: 0,
+        jobId: null,
+        pollInterval: null,
+  
         async start() {
           if (!this.url && !this.file) {
             alert("Please paste a YouTube link or upload a video.");
             return;
           }
-
+  
           this.loading = true;
           this.highlights = [];
-
+          this.progressText = "Starting…";
+          this.progressPercent = 5;
+  
           const formData = new FormData();
           if (this.url) formData.append("url", this.url);
           if (this.file) formData.append("file", this.file);
-
+  
           try {
+            // 1️⃣ Start job
             const res = await fetch("/start/", {
               method: "POST",
               headers: {
@@ -176,21 +193,66 @@
               },
               body: formData
             });
-
+  
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed");
-
-            this.highlights = data.highlights || [];
-
+            if (!res.ok) throw new Error(data.error || "Failed to start job");
+  
+            this.jobId = data.job_id;
+  
+            // 2️⃣ Start polling
+            this.pollInterval = setInterval(() => {
+              this.pollProgress();
+            }, 2000);
+  
           } catch (e) {
             alert(e.message);
-          } finally {
             this.loading = false;
           }
+        },
+  
+        async pollProgress() {
+          try {
+            const res = await fetch(`/progress/${this.jobId}/`);
+            const data = await res.json();
+  
+            if (data.error) {
+              throw new Error(data.error);
+            }
+  
+            this.progressText = data.status;
+            this.progressPercent = data.percent || 0;
+  
+            if (data.status === "done") {
+              clearInterval(this.pollInterval);
+              await this.fetchResult();
+            }
+  
+            if (data.status === "error") {
+              clearInterval(this.pollInterval);
+              throw new Error(data.error || "Processing failed");
+            }
+  
+          } catch (e) {
+            clearInterval(this.pollInterval);
+            alert(e.message);
+            this.loading = false;
+          }
+        },
+  
+        async fetchResult() {
+          const res = await fetch(`/result/${this.jobId}/`);
+          const data = await res.json();
+  
+          if (!res.ok) {
+            alert(data.error || "Failed to fetch result");
+            this.loading = false;
+            return;
+          }
+  
+          this.highlights = data.highlights || [];
+          this.loading = false;
         }
       }
     }
   </script>
-
-</body>
-</html>
+  

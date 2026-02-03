@@ -247,20 +247,24 @@ from .utils import (
 
 from .highlight_generator import make_highlights_multiple
 
+from threading import Thread
+from .jobs import create_job
+from .worker import run_highlight_job
+
 #from transformers import pipeline
 
-from highlights.ml_models import EMOTION_MODEL as emotion_classifier
+#from highlights.ml_models import EMOTION_MODEL as emotion_classifier
 from django.views.decorators.csrf import csrf_exempt
 
 
 # =========================
 # CONFIG (REELS MODE)
 # =========================
-REEL_CONFIG = {
-    "clip_len": 10,      # Ideal for Shorts/Reels
-    "min_gap": 15,      # No overlapping highlights
-    "max_clips": 6,     # Quality > quantity
-}
+# REEL_CONFIG = {
+#     "clip_len": 10,      # Ideal for Shorts/Reels
+#     "min_gap": 15,      # No overlapping highlights
+#     "max_clips": 6,     # Quality > quantity
+# }
 
 # Emotion classifier
 # emotion_classifier = pipeline(
@@ -268,7 +272,7 @@ REEL_CONFIG = {
 #     model="bhadresh-savani/distilbert-base-uncased-emotion"
 # )
 
-progress = {"status": "idle", "percent": 0}
+#progress = {"status": "idle", "percent": 0}
 
 
 def home(request):
@@ -278,162 +282,212 @@ def home(request):
 # =========================
 # HIGHLIGHT SELECTION LOGIC
 # =========================
-def select_reel_highlights(scored_times):
-    """
-    Non-max suppression to avoid duplicate/nearby clips
-    """
-    selected = []
-    candidates = sorted(
-        scored_times.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )
+# def select_reel_highlights(scored_times):
+#     """
+#     Non-max suppression to avoid duplicate/nearby clips
+#     """
+#     selected = []
+#     candidates = sorted(
+#         scored_times.items(),
+#         key=lambda x: x[1],
+#         reverse=True
+#     )
 
-    for t, score in candidates:
-        if all(abs(t - s) >= REEL_CONFIG["min_gap"] for s in selected):
-            selected.append(t)
+#     for t, score in candidates:
+#         if all(abs(t - s) >= REEL_CONFIG["min_gap"] for s in selected):
+#             selected.append(t)
 
-        if len(selected) >= REEL_CONFIG["max_clips"]:
-            break
+#         if len(selected) >= REEL_CONFIG["max_clips"]:
+#             break
 
-    return sorted(selected)
+#     return sorted(selected)
+
+# def start_highlights(request):
+#     try:
+#         global progress
+
+#         uploaded_file = request.FILES.get("file")
+#         url = request.POST.get("url")
+
+#         if not uploaded_file and not url:
+#             return JsonResponse({"error": "Provide a link or upload a video"}, status=400)
+
+#         uid = str(uuid.uuid4())[:8]
+#         output_dir = os.path.join(settings.MEDIA_ROOT, f"highlights_{uid}")
+#         os.makedirs(output_dir, exist_ok=True)
+
+#         # =========================
+#         # STEP 1: DOWNLOAD
+#         # =========================
+#         progress = {"status": "downloading", "percent": 10}
+#         if uploaded_file:
+#             video_path = os.path.join("/tmp", uploaded_file.name)
+#             with open(video_path, "wb+") as f:
+#                 for chunk in uploaded_file.chunks():
+#                     f.write(chunk)
+#         else:
+#             try:
+#                 video_path = download_youtube(url)
+#             except Exception:
+#                 return JsonResponse(
+#                     {"error": "YouTube blocked this video. Please upload the file instead."},
+#                     status=400
+#                 )
+
+#         # =========================
+#         # STEP 2: AUDIO
+#         # =========================
+#         progress = {"status": "extracting audio", "percent": 30}
+#         audio_path = extract_audio(video_path)
+
+#         # =========================
+#         # STEP 3: SCORING SIGNALS
+#         # =========================
+#         progress = {"status": "detecting highlights", "percent": 50}
+
+#         # Scene detection (LOW weight)
+#         scenes = detect_scenes(video_path)[:20]
+#         scene_scores = {int(t): 1 for t in scenes}
+
+#         # Audio peaks (MEDIUM weight)
+#         peaks = detect_audio_peaks(audio_path, top_k=20)
+#         peak_scores = {int(t): 3 for t in peaks}
+
+#         # =========================
+#         # EMOTION DETECTION (BUFFERED)
+#         # =========================
+#         transcript_json = transcribe_with_azure(audio_path)
+#         ai_scores = {}
+
+#         if transcript_json:
+#             detailed = transcript_json.get("NBest", [])
+#             detailed = detailed[0] if detailed else None
+
+#             if detailed and "Words" in detailed:
+#                 buffer_words = []
+#                 buffer_start = None
+
+#                 for word in detailed["Words"]:
+#                     if buffer_start is None:
+#                         buffer_start = word["Offset"]
+
+#                     buffer_words.append(word["Word"])
+
+#                     # Analyze phrase chunks (6 words)
+#                     if len(buffer_words) >= 6:
+#                         phrase = " ".join(buffer_words)
+#                         emotion = emotion_classifier(phrase)[0]
+#                         label = emotion["label"].lower()
+
+#                         if label in ["joy", "surprise", "excitement"]:
+#                             t = int(buffer_start / 10_000_000)
+#                             ai_scores[t] = ai_scores.get(t, 0) + 4
+
+#                         buffer_words = []
+#                         buffer_start = None
+
+#         # =========================
+#         # COMBINE SCORES
+#         # =========================
+#         combined = {}
+
+#         for t, s in scene_scores.items():
+#             combined[t] = combined.get(t, 0) + s
+
+#         for t, s in peak_scores.items():
+#             combined[t] = combined.get(t, 0) + s
+
+#         for t, s in ai_scores.items():
+#             combined[t] = combined.get(t, 0) + s
+
+#         # =========================
+#         # REEL OPTIMIZED SELECTION
+#         # =========================
+#         highlight_times = select_reel_highlights(combined)
+
+#         VIDEO_PADDING = 2  # seconds
+        
+#         highlight_times = [
+#             max(VIDEO_PADDING, t)
+#             for t in highlight_times
+#         ]
+
+#         # =========================
+#         # GENERATE CLIPS (CENTERED)
+#         # =========================
+#         progress = {"status": "generating highlights", "percent": 90}
+
+#         highlights = make_highlights_multiple(
+#                     video_path,
+#                     highlight_times,
+#                     transcript_json=transcript_json,
+#                     clip_len=REEL_CONFIG["clip_len"],
+#                     output_dir=output_dir,
+#                     center=True,
+#                 )
+
+#         result = [
+#             {
+#                 "video": h["video"],
+#                 "thumbnail": h["thumbnail"]
+#             }
+#             for h in highlights
+#         ]
+
+#         cleanup_video(video_path)
+
+#         progress = {"status": "done", "percent": 100}
+#         return JsonResponse({"highlights": result})
+    
+#     except Exception as e:
+#             return JsonResponse({
+#                 "error": str(e)
+#             }, status=500)
 
 def start_highlights(request):
-    global progress
-
     uploaded_file = request.FILES.get("file")
     url = request.POST.get("url")
+
+    video_path = None
+    if uploaded_file:
+        video_path = f"/tmp/{uuid.uuid4().hex}_{uploaded_file.name}"
+        with open(video_path, "wb") as f:
+            for chunk in uploaded_file.chunks():
+                f.write(chunk)
 
     if not uploaded_file and not url:
         return JsonResponse({"error": "Provide a link or upload a video"}, status=400)
 
-    uid = str(uuid.uuid4())[:8]
-    output_dir = os.path.join(settings.MEDIA_ROOT, f"highlights_{uid}")
-    os.makedirs(output_dir, exist_ok=True)
+    job_id = str(uuid.uuid4())
+    create_job(job_id)
 
-    # =========================
-    # STEP 1: DOWNLOAD
-    # =========================
-    progress = {"status": "downloading", "percent": 10}
-    if uploaded_file:
-        video_path = os.path.join("/tmp", uploaded_file.name)
-        with open(video_path, "wb+") as f:
-            for chunk in uploaded_file.chunks():
-                f.write(chunk)
-    else:
-        try:
-            video_path = download_youtube(url)
-        except Exception:
-            return JsonResponse(
-                {"error": "YouTube blocked this video. Please upload the file instead."},
-                status=400
-            )
+    Thread(
+        target=run_highlight_job,
+        args=(job_id,video_path, url),
+        daemon=True
+    ).start()
 
-    # =========================
-    # STEP 2: AUDIO
-    # =========================
-    progress = {"status": "extracting audio", "percent": 30}
-    audio_path = extract_audio(video_path)
-
-    # =========================
-    # STEP 3: SCORING SIGNALS
-    # =========================
-    progress = {"status": "detecting highlights", "percent": 50}
-
-    # Scene detection (LOW weight)
-    scenes = detect_scenes(video_path)[:20]
-    scene_scores = {int(t): 1 for t in scenes}
-
-    # Audio peaks (MEDIUM weight)
-    peaks = detect_audio_peaks(audio_path, top_k=20)
-    peak_scores = {int(t): 3 for t in peaks}
-
-    # =========================
-    # EMOTION DETECTION (BUFFERED)
-    # =========================
-    transcript_json = transcribe_with_azure(audio_path)
-    ai_scores = {}
-
-    if transcript_json:
-        detailed = transcript_json.get("NBest", [])
-        detailed = detailed[0] if detailed else None
-
-        if detailed and "Words" in detailed:
-            buffer_words = []
-            buffer_start = None
-
-            for word in detailed["Words"]:
-                if buffer_start is None:
-                    buffer_start = word["Offset"]
-
-                buffer_words.append(word["Word"])
-
-                # Analyze phrase chunks (6 words)
-                if len(buffer_words) >= 6:
-                    phrase = " ".join(buffer_words)
-                    emotion = emotion_classifier(phrase)[0]
-                    label = emotion["label"].lower()
-
-                    if label in ["joy", "surprise", "excitement"]:
-                        t = int(buffer_start / 10_000_000)
-                        ai_scores[t] = ai_scores.get(t, 0) + 4
-
-                    buffer_words = []
-                    buffer_start = None
-
-    # =========================
-    # COMBINE SCORES
-    # =========================
-    combined = {}
-
-    for t, s in scene_scores.items():
-        combined[t] = combined.get(t, 0) + s
-
-    for t, s in peak_scores.items():
-        combined[t] = combined.get(t, 0) + s
-
-    for t, s in ai_scores.items():
-        combined[t] = combined.get(t, 0) + s
-
-    # =========================
-    # REEL OPTIMIZED SELECTION
-    # =========================
-    highlight_times = select_reel_highlights(combined)
-
-    VIDEO_PADDING = 2  # seconds
-    
-    highlight_times = [
-        max(VIDEO_PADDING, t)
-        for t in highlight_times
-    ]
-
-    # =========================
-    # GENERATE CLIPS (CENTERED)
-    # =========================
-    progress = {"status": "generating highlights", "percent": 90}
-
-    highlights = make_highlights_multiple(
-                video_path,
-                highlight_times,
-                transcript_json=transcript_json,
-                clip_len=REEL_CONFIG["clip_len"],
-                output_dir=output_dir,
-                center=True,
-            )
-
-    result = [
-        {
-            "video": h["video"],
-            "thumbnail": h["thumbnail"]
-        }
-        for h in highlights
-    ]
-
-    cleanup_video(video_path)
-
-    progress = {"status": "done", "percent": 100}
-    return JsonResponse({"highlights": result})
+    return JsonResponse({
+        "job_id": job_id,
+        "status": "started"
+    })
 
 
-def check_progress(request):
-    return JsonResponse(progress)
+from .jobs import get_job
+
+def check_progress(request, job_id):
+    job = get_job(job_id)
+    if not job:
+        return JsonResponse({"error": "Invalid job"}, status=404)
+    return JsonResponse(job)
+
+
+def job_result(request, job_id):
+    job = get_job(job_id)
+    if not job or job["status"] != "done":
+        return JsonResponse({"error": "Not ready"}, status=400)
+
+    return JsonResponse({"highlights": job["result"]})
+
+
+
