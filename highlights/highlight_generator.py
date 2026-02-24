@@ -80,6 +80,21 @@ FONT_PATH = "assets/fonts/Inter-Bold.ttf"
 def clamp(t, max_t):
     return round(max(0, min(t, max_t)), 2)
 
+def build_dynamic_crop_expression(bias="center"):
+    if bias == "left":
+        base = "0.15"
+    elif bias == "right":
+        base = "0.75"
+    else:
+        base = "0.5"
+
+    return (
+        "crop=ih*9/16:ih:"
+        f"x='(iw-ih*9/16)*{base} + (iw-ih*9/16)*0.12*sin(0.8*t)':"
+        "y=0:"
+        "eval=frame,"
+        "setsar=1"
+    )
 
 def make_highlights_multiple(
     video_path,
@@ -89,6 +104,8 @@ def make_highlights_multiple(
     output_dir="media",
     center=True,
     min_gap=6,
+    auto_zoom=None,
+    speaker_bias_map=None,
 ):
     os.makedirs(output_dir, exist_ok=True)
     folder_name = os.path.basename(output_dir.rstrip("/"))
@@ -142,7 +159,29 @@ def make_highlights_multiple(
                 f"enable='{enable_expr}'"
             )
 
-        vf = ",".join(drawtext_filters)
+        # 🔥 SMART 9:16 CROP
+        vf_filters = []
+
+        # bias = "center"
+        # if speaker_bias_map:
+        #     bias = speaker_bias_map.get(t, "center")
+
+        # vf_filters.append(build_dynamic_crop_expression(bias))
+
+        # 🎯 Face-tracked illusion
+        vf_filters.append("setsar=1")
+
+        # 🔍 Ken Burns auto-zoom
+        if auto_zoom:
+            vf_filters.append(
+                "scale=iw*(1+0.12*min(t\\,7)/7):ih*(1+0.12*min(t\\,7)/7)"
+            )
+
+        # 📝 Captions
+        vf_filters.extend(drawtext_filters)
+
+        vf = ",".join(vf_filters) if vf_filters else None
+
 
         cmd = [
             "ffmpeg", "-y",

@@ -14,6 +14,7 @@ from .utils import (
 )
 from .highlight_generator import make_highlights_multiple
 from highlights.ml_models import EMOTION_MODEL
+#from highlights.face_crop import detect_face_bias
 
 
 REEL_CONFIG = {
@@ -124,12 +125,28 @@ def run_highlight_job(job_id, video_path=None, url=None):
         highlight_times = [max(2, t) for t in highlight_times]
 
         # --------------------------------------------------
+        # STEP 4.1: face bias detection (left/center/right)
+        # --------------------------------------------------
+
+        # speaker_bias_map = {}
+
+        # for t in highlight_times:
+        #     speaker_bias_map[t] = detect_face_bias(
+        #         video_path=video_path,
+        #         clip_start=t,
+        #         clip_len=REEL_CONFIG["clip_len"]
+        #     )
+
+
+        # --------------------------------------------------
         # STEP 5: GENERATE CLIPS
         # --------------------------------------------------
         update_job(job_id, "generating highlights", 85)
 
         output_dir = os.path.join(settings.MEDIA_ROOT, f"highlights_{job_id}")
         os.makedirs(output_dir, exist_ok=True)
+
+        speaker_bias_map = {} # Fixed missing variable
 
         highlights = make_highlights_multiple(
             video_path=video_path,
@@ -138,6 +155,7 @@ def run_highlight_job(job_id, video_path=None, url=None):
             clip_len=REEL_CONFIG["clip_len"],
             output_dir=output_dir,
             center=True,
+            speaker_bias_map=speaker_bias_map,
         )
 
         update_job(job_id, "done", 100, result=highlights)

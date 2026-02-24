@@ -164,3 +164,7 @@ TRANSFORMERS_CACHE = os.environ.get(
     "TRANSFORMERS_CACHE",
     HF_HOME
 )
+
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"

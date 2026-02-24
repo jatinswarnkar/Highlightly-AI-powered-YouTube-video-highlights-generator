@@ -255,6 +255,8 @@ from .worker import run_highlight_job
 
 #from highlights.ml_models import EMOTION_MODEL as emotion_classifier
 from django.views.decorators.csrf import csrf_exempt
+from .views_auth import login_view, signup_view, logout_view
+from django.contrib.auth.decorators import login_required
 
 
 # =========================
@@ -444,6 +446,7 @@ def home(request):
 #                 "error": str(e)
 #             }, status=500)
 
+@login_required
 def start_highlights(request):
     uploaded_file = request.FILES.get("file")
     url = request.POST.get("url")

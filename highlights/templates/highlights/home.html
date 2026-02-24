@@ -1,258 +1,246 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Highlightly — AI Shorts Generator</title>
+{% extends "base.html" %}
 
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
+{% block content %}
 
-  <!-- Alpine.js -->
-  <script defer src="https://unpkg.com/alpinejs"></script>
-</head>
+<!-- CSRF -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 
-<body class="bg-[#0B0F1A] text-white min-h-screen">
-
-  <!-- CSRF -->
-  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-
-  <!-- NAV -->
-  <nav class="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
-    <div class="text-2xl font-extrabold tracking-tight">
-      ⚡ Highlightly
-    </div>
-    <div class="space-x-4 text-sm text-gray-300">
-      <span class="opacity-80">Free Trial</span>
-      <span class="opacity-40">|</span>
-      <span class="opacity-80">Login</span>
-    </div>
-  </nav>
-
-  <!-- HERO -->
-  <section class="max-w-5xl mx-auto px-6 text-center mt-16">
-    <h1 class="text-5xl font-extrabold leading-tight">
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="container">
+    <h1 class="hero-title">
       Turn long videos into<br>
-      <span class="text-indigo-400">viral Shorts & Reels</span>
+      <span class="animated-gradient-text">viral Shorts & Reels</span>
     </h1>
 
-    <p class="mt-6 text-gray-400 text-lg">
+    <p class="hero-subtitle">
       AI finds the best moments, adds captions, and exports
       ready-to-post clips for Instagram, YouTube & TikTok.
     </p>
 
-    <div class="mt-6 text-sm text-gray-500">
-      🎬 Used by creators • ⚡ No editing skills required • 🚀 Publish faster
+    <div class="hero-meta">
+      🎬 Creators • ⚡ No editing • 🚀 Faster growth
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- APP -->
-  <section
-    class="max-w-4xl mx-auto px-6 mt-16"
-    x-data="highlightApp()"
-  >
-    <div class="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
+<!-- ================= APP / CTA ================= -->
+{% if user.is_authenticated %}
 
-      <!-- INPUT -->
-      <div class="space-y-5">
+<section class="container" x-data="highlightApp()">
+  <div class="glowing-card-wrap">
+    <div class="glowing-card">
 
-        <input
-          type="text"
-          x-model="url"
-          placeholder="Paste YouTube URL (recommended)"
-          class="w-full px-5 py-4 rounded-xl bg-[#11162A]
-                 border border-white/10
-                 focus:ring-2 focus:ring-indigo-500 outline-none"
-        >
 
-        <div class="text-center text-gray-500 text-sm">OR</div>
+      <div class="form-group" style="margin-bottom: 0;" x-data="{ activeTab: 'url' }">
 
-        <input
-          type="file"
-          accept="video/*"
-          @change="file = $event.target.files[0]"
-          class="w-full px-5 py-4 rounded-xl bg-[#11162A]
-                 border border-white/10"
-        >
+        <div class="tabs">
+          <button class="tab-btn" :class="activeTab === 'url' ? 'active' : ''" @click.prevent="activeTab = 'url'">
+            🔗 Paste Link
+          </button>
+          <button class="tab-btn" :class="activeTab === 'file' ? 'active' : ''" @click.prevent="activeTab = 'file'">
+            📁 Upload File
+          </button>
+        </div>
 
-        <button
-          @click="start()"
-          :disabled="loading"
-          class="w-full bg-indigo-600 hover:bg-indigo-500
-                 disabled:opacity-50
-                 py-4 rounded-xl font-semibold text-lg transition"
-        >
-          🚀 Generate Highlights
+        <div x-show="activeTab === 'url'" x-transition style="margin-bottom: var(--spacing-lg);">
+          <input type="text" x-model="url" placeholder="Paste YouTube URL (recommended)" class="input-field">
+        </div>
+
+        <div x-show="activeTab === 'file'" x-cloak style="margin-bottom: var(--spacing-lg); display: none;">
+          <label class="file-drop-area">
+            <span class="file-msg">
+              <span x-show="!file">📁 Click or drag video file here</span>
+              <span x-show="file" x-text="file ? file.name : ''" style="color: var(--accent-primary);"></span>
+            </span>
+            <input type="file" accept="video/*" @change="file = $event.target.files[0]" class="file-input-hidden">
+          </label>
+        </div>
+
+        <button @click="start()" :disabled="loading" class="btn btn-primary"
+          style="width: 100%; font-size: 1.1rem; padding: 1rem;">
+          <span x-show="!loading">🚀 Generate Highlights</span>
+          <span x-show="loading" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <span class="spinner" style="width: 20px; height: 20px; border-width: 2px; margin: 0;"></span>
+            Processing…
+          </span>
         </button>
 
-        <p class="text-xs text-gray-400 text-center">
-          Free plan: up to 3 highlights • Pro unlocks unlimited clips
+        <p style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: var(--spacing-md);">
+          Free plan: limited highlights • Pro unlocks unlimited clips
         </p>
       </div>
 
-      <!-- LOADING -->
-      <div x-show="loading" class="mt-10 text-center">
-        <div class="animate-spin h-12 w-12 mx-auto border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+      <!-- LOADING STATE -->
+      <div x-show="loading" style="text-align: center; margin-top: var(--spacing-xl);">
 
-        <p class="mt-4 text-gray-400" x-text="progressText"></p>
+        <h3 x-text="progressText" style="color: var(--text-primary); margin-bottom: var(--spacing-sm);"></h3>
 
-        <div class="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
-          <div
-            class="h-full bg-indigo-500 transition-all duration-500"
-            :style="`width: ${progressPercent}%`"
-          ></div>
+        <div class="progress-container">
+          <div class="progress-bar" :style="`width: ${progressPercent}%`"></div>
         </div>
 
-        <div class="mt-2 text-xs text-gray-500">
-          <span x-text="progressPercent"></span>% complete
-        </div>
-
-
-        <div class="mt-2 text-xs text-gray-500">
-          This usually takes 30–90 seconds
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted);">
+          <span><span x-text="Math.round(progressPercent)"></span>% complete</span>
+          <span>This usually takes 30–90 seconds</span>
         </div>
       </div>
 
-      <!-- RESULTS -->
-      <div
-        x-show="highlights.length > 0"
-        class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6"
-      >
+      <!-- RESULTS GRID -->
+      <div x-show="highlights.length > 0" class="highlights-grid" x-cloak>
         <template x-for="highlight in highlights" :key="highlight.video">
-          <div class="bg-[#11162A] rounded-2xl overflow-hidden border border-white/10">
+          <div class="highlight-item">
+            <div class="highlight-video-wrapper">
+              <video preload="metadata" loop muted onmouseover="this.play()" onmouseout="this.pause()">
+                <source :src="highlight.video" type="video/mp4">
+              </video>
 
-            <video class="w-full h-56 object-cover" controls preload="metadata">
-              <source :src="highlight.video" type="video/mp4">
-            </video>
-
-            <div class="p-4 flex justify-between items-center">
-              <span class="text-sm text-gray-300">
-                AI Highlight
-              </span>
-
-              <a
-                :href="highlight.video"
-                download
-                class="bg-emerald-500 hover:bg-emerald-400
-                       px-4 py-2 rounded-lg text-sm font-bold"
-              >
-                ⬇ Download
-              </a>
+              <div class="highlight-meta">
+                <div class="highlight-badge">
+                  ✨ AI Highlight
+                </div>
+                <a :href="highlight.video" download class="btn-icon" title="Download Video">
+                  <svg xmlns="http://www.3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                  </svg>
+                </a>
+              </div>
             </div>
           </div>
         </template>
       </div>
 
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- FOOTER -->
-  <footer class="mt-24 pb-12 text-center text-gray-500 text-sm">
-    © 2026 Highlightly • Built for creators •
-    <span class="text-gray-400">Privacy</span> •
-    <span class="text-gray-400">Terms</span>
-  </footer>
+{% else %}
 
-  <!-- APP LOGIC -->
-  <script>
-    function getCSRFToken() {
-      return document.querySelector('[name=csrfmiddlewaretoken]').value;
-    }
-  
-    function highlightApp() {
-      return {
-        url: "",
-        file: null,
-        loading: false,
-        highlights: [],
-        progressText: "",
-        progressPercent: 0,
-        jobId: null,
-        pollInterval: null,
-  
-        async start() {
-          if (!this.url && !this.file) {
-            alert("Please paste a YouTube link or upload a video.");
-            return;
-          }
-  
-          this.loading = true;
-          this.highlights = [];
-          this.progressText = "Starting…";
-          this.progressPercent = 5;
-  
-          const formData = new FormData();
-          if (this.url) formData.append("url", this.url);
-          if (this.file) formData.append("file", this.file);
-  
-          try {
-            // 1️⃣ Start job
-            const res = await fetch("/start/", {
-              method: "POST",
-              headers: {
-                "X-CSRFToken": getCSRFToken()
-              },
-              body: formData
-            });
-  
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to start job");
-  
-            this.jobId = data.job_id;
-  
-            // 2️⃣ Start polling
-            this.pollInterval = setInterval(() => {
-              this.pollProgress();
-            }, 2000);
-  
-          } catch (e) {
-            alert(e.message);
-            this.loading = false;
-          }
-        },
-  
-        async pollProgress() {
-          try {
-            const res = await fetch(`/progress/${this.jobId}/`);
-            const data = await res.json();
-  
-            if (data.error) {
-              throw new Error(data.error);
-            }
-  
-            this.progressText = data.status;
-            this.progressPercent = data.percent || 0;
-  
-            if (data.status === "done") {
-              clearInterval(this.pollInterval);
-              await this.fetchResult();
-            }
-  
-            if (data.status === "error") {
-              clearInterval(this.pollInterval);
-              throw new Error(data.error || "Processing failed");
-            }
-  
-          } catch (e) {
-            clearInterval(this.pollInterval);
-            alert(e.message);
-            this.loading = false;
-          }
-        },
-  
-        async fetchResult() {
-          const res = await fetch(`/result/${this.jobId}/`);
+<!-- CTA FOR GUESTS -->
+<section class="container" style="margin-top: var(--spacing-xl);">
+  <div class="glass-card"
+    style="text-align: center; max-width: 700px; margin: 0 auto; padding: var(--spacing-xl) 2rem;">
+    <h2>Create viral clips in minutes</h2>
+    <p style="color: var(--text-secondary); font-size: 1.1rem; margin-bottom: var(--spacing-lg);">
+      Sign up to upload videos and generate AI-powered highlights instantly.
+    </p>
+    <a href="/signup/" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+      🚀 Start Free Trial
+    </a>
+  </div>
+</section>
+
+{% endif %}
+
+<!-- ================= APP LOGIC ================= -->
+<script>
+  function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+  }
+
+  function highlightApp() {
+    return {
+      url: "",
+      file: null,
+      loading: false,
+      highlights: [],
+      progressText: "",
+      progressPercent: 0,
+      jobId: null,
+      pollInterval: null,
+
+      async start() {
+        if (!this.url && !this.file) {
+          alert("Please paste a YouTube link or upload a video.");
+          return;
+        }
+
+        if (this.pollInterval) clearInterval(this.pollInterval);
+        this.highlights = [];
+        this.jobId = null;
+        this.progressText = "Initializing Engine…";
+        this.progressPercent = 5;
+        this.loading = true;
+
+        const formData = new FormData();
+        if (this.url) formData.append("url", this.url);
+        if (this.file) formData.append("file", this.file);
+
+        try {
+          const res = await fetch("/start/", {
+            method: "POST",
+            headers: { "X-CSRFToken": getCSRFToken() },
+            body: formData
+          });
+
           const data = await res.json();
-  
-          if (!res.ok) {
-            alert(data.error || "Failed to fetch result");
-            this.loading = false;
-            return;
-          }
-  
-          this.highlights = data.highlights || [];
+          if (!res.ok) throw new Error(data.error || "Failed to start job");
+
+          this.jobId = data.job_id;
+
+          this.pollInterval = setInterval(() => {
+            this.pollProgress();
+          }, 2000);
+
+        } catch (e) {
+          alert(e.message);
           this.loading = false;
+        }
+      },
+
+      async pollProgress() {
+        try {
+          const res = await fetch(`/progress/${this.jobId}/`);
+          const data = await res.json();
+
+          const map = {
+            downloading: "Downloading source video…",
+            "extracting audio": "Isolating audio tracks…",
+            "detecting highlights": "AI is finding viral moments…",
+            "generating highlights": "Rendering 9:16 clips & captions…",
+            done: "Processing Complete!"
+          };
+
+          this.progressText = map[data.status] || data.status;
+          this.progressPercent = data.percent || 0;
+
+          if (data.status === "done") {
+            clearInterval(this.pollInterval);
+            await this.fetchResult();
+          }
+
+          if (data.status === "error") {
+            clearInterval(this.pollInterval);
+            this.loading = false;
+            alert(data.error || "Processing failed.");
+          }
+
+        } catch (e) {
+          clearInterval(this.pollInterval);
+          this.loading = false;
+          alert(e.message);
+        }
+      },
+
+      async fetchResult() {
+        const res = await fetch(`/result/${this.jobId}/`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.error || "Failed to fetch result");
+          this.loading = false;
+          return;
+        }
+
+        this.highlights = data.highlights || [];
+        this.loading = false;
+
+        if (this.highlights.length === 0) {
+          alert("No strong highlights found. Try another video.");
         }
       }
     }
-  </script>
-  
+  }
+</script>
+
+{% endblock %}

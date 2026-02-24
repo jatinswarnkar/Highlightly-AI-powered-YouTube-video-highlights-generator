@@ -30,3 +30,5 @@ staticfiles/
 *.mp4
 *.avi
 *.mkv
+
+.md
