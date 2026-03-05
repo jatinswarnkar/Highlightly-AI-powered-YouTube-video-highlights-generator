@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("accounts/", include("allauth.urls")),  # Google OAuth & social auth
     path("", include("highlights.urls")),  # mount highlights app
 ]
 

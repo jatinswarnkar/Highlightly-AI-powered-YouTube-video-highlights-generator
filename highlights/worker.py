@@ -14,7 +14,7 @@ from .utils import (
 )
 from .highlight_generator import make_highlights_multiple
 from highlights.ml_models import EMOTION_MODEL
-#from highlights.face_crop import detect_face_bias
+from highlights.face_crop import detect_face_bias
 
 
 REEL_CONFIG = {
@@ -43,7 +43,7 @@ def select_reel_highlights(scored_times):
 # =========================
 # MAIN WORKER
 # =========================
-def run_highlight_job(job_id, video_path=None, url=None):
+def run_highlight_job(job_id, video_path=None, url=None, user_id=None):
     audio_path = None
 
     try:
@@ -128,14 +128,14 @@ def run_highlight_job(job_id, video_path=None, url=None):
         # STEP 4.1: face bias detection (left/center/right)
         # --------------------------------------------------
 
-        # speaker_bias_map = {}
+        speaker_bias_map = {}
 
-        # for t in highlight_times:
-        #     speaker_bias_map[t] = detect_face_bias(
-        #         video_path=video_path,
-        #         clip_start=t,
-        #         clip_len=REEL_CONFIG["clip_len"]
-        #     )
+        for t in highlight_times:
+            speaker_bias_map[t] = detect_face_bias(
+                video_path=video_path,
+                clip_start=t,
+                clip_len=REEL_CONFIG["clip_len"]
+            )
 
 
         # --------------------------------------------------
@@ -146,7 +146,7 @@ def run_highlight_job(job_id, video_path=None, url=None):
         output_dir = os.path.join(settings.MEDIA_ROOT, f"highlights_{job_id}")
         os.makedirs(output_dir, exist_ok=True)
 
-        speaker_bias_map = {} # Fixed missing variable
+        # speaker_bias_map = {} # Fixed missing variable (removing this redundant initialization)
 
         highlights = make_highlights_multiple(
             video_path=video_path,
@@ -157,6 +157,30 @@ def run_highlight_job(job_id, video_path=None, url=None):
             center=True,
             speaker_bias_map=speaker_bias_map,
         )
+
+        from django.contrib.auth.models import User
+        from highlights.models import HighlightClip, Profile
+        
+        # Save clips to database if user is authenticated
+        if user_id:
+            try:
+                user = User.objects.get(id=user_id)
+                for h in highlights:
+                    HighlightClip.objects.create(
+                        user=user,
+                        video_url=h.get('video'),
+                        thumbnail_url=h.get('thumbnail'),
+                        ai_caption=h.get('ai_caption', ''),
+                        ai_hashtags=h.get('ai_hashtags', '')
+                    )
+                # Increment processing minutes based on video length downloaded (approximation)
+                # For now, let's bump it by a fixed amount per job or based on the number of highlights.
+                # Assuming 10 minutes used per long video ingested.
+                profile = Profile.objects.get_or_create(user=user)[0]
+                profile.minutes_used += 10
+                profile.save()
+            except Exception as e:
+                print(f"Error saving highlight to DB: {e}")
 
         update_job(job_id, "done", 100, result=highlights)
 

@@ -280,6 +280,17 @@ from django.contrib.auth.decorators import login_required
 def home(request):
     return render(request, "highlights/home.html")
 
+@login_required
+def dashboard_view(request):
+    from .models import HighlightClip, Profile
+    profile, created = Profile.objects.get_or_create(user=request.user)
+    clips = HighlightClip.objects.filter(user=request.user).order_by('-created_at')
+    
+    return render(request, "highlights/dashboard.html", {
+        "profile": profile,
+        "clips": clips,
+    })
+
 
 # =========================
 # HIGHLIGHT SELECTION LOGIC
@@ -466,7 +477,7 @@ def start_highlights(request):
 
     Thread(
         target=run_highlight_job,
-        args=(job_id,video_path, url),
+        args=(job_id, video_path, url, request.user.id),
         daemon=True
     ).start()
 
@@ -492,5 +503,12 @@ def job_result(request, job_id):
 
     return JsonResponse({"highlights": job["result"]})
 
-
-
+# --- BILLING VIEWS ---
+from .views_billing import (
+    pricing_view,
+    create_subscription,
+    verify_payment,
+    checkout_success,
+    checkout_cancel,
+    razorpay_webhook,
+)

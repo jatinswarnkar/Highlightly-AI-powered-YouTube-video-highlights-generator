@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Pricing | Highlightly{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: clamp(6rem, 15vh, 8rem) 0 var(--spacing-xxl);">
+    <div style="text-align: center; margin-bottom: 4rem;">
+        <h1 class="hero-title-massive" style="font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 1rem;">Simple,
+            transparent <span class="animated-gradient-text">pricing</span></h1>
+        <p class="hero-subtitle-large">No hidden fees, no credit card required to start.</p>
+    </div>
+
+    <!-- Monthly / Yearly Toggle (Visual only for now) -->
+    <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-bottom: 3rem;">
+        <span style="color: var(--text-primary); font-weight: 500;">Billed Monthly</span>
+        <div
+            style="width: 50px; height: 26px; background: rgba(255,255,255,0.1); border-radius: 13px; position: relative; cursor: pointer;">
+            <div
+                style="width: 22px; height: 22px; background: var(--accent-primary); border-radius: 50%; position: absolute; left: 2px; top: 2px; transition: 0.3s; box-shadow: 0 0 10px var(--accent-primary);">
+            </div>
+        </div>
+        <span style="color: var(--text-muted);">Billed Yearly (Save 20%)</span>
+    </div>
+
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1200px; margin: 0 auto;">
+
+        <!-- FREE TIER -->
+        <div class="bento-card"
+            style="background: rgba(18, 18, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 2.5rem; display: flex; flex-direction: column;">
+            <div style="margin-bottom: 2rem;">
+                <h3 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Starter</h3>
+                <p style="color: var(--text-secondary); height: 40px;">Perfect for testing the waters and creating your
+                    first highlights.</p>
+            </div>
+            <div style="margin-bottom: 2rem;">
+                <span style="font-size: 3.5rem; font-weight: 800; color: white;">$0</span><span
+                    style="color: var(--text-muted); font-size: 1.2rem;">/mo</span>
+            </div>
+            <ul
+                style="list-style: none; padding: 0; margin: 0 0 2rem 0; flex-grow: 1; color: var(--text-secondary); line-height: 2;">
+                <li><span style="color: var(--accent-primary); margin-right: 10px;">✓</span> 60 Processing Minutes</li>
+                <li><span style="color: var(--accent-primary); margin-right: 10px;">✓</span> 720p Export Quality</li>
+                <li><span style="color: var(--accent-primary); margin-right: 10px;">✓</span> Watermarked Videos</li>
+                <li style="opacity: 0.5;"><span style="margin-right: 10px;">—</span> No AI Viral Hooks</li>
+            </ul>
+            {% if request.user.is_authenticated and request.user.profile.plan == 'free' %}
+            <button class="btn btn-outline" style="width: 100%;" disabled>Current Plan</button>
+            {% else %}
+            <a href="/login/" class="btn btn-outline" style="width: 100%; text-align: center;">Get Started</a>
+            {% endif %}
+        </div>
+
+        <!-- PRO TIER -->
+        <div class="bento-card"
+            style="background: rgba(30, 20, 45, 0.85); border: 2px solid var(--accent-primary); border-radius: 24px; padding: 2.5rem; display: flex; flex-direction: column; transform: scale(1.05); box-shadow: 0 0 40px rgba(124, 58, 237, 0.2);">
+            <div
+                style="background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary)); color: white; border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; font-weight: 700; display: inline-block; align-self: flex-start; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;">
+                Most Popular</div>
+            <div style="margin-bottom: 1rem;">
+                <h3 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; color: white;">Pro Creator</h3>
+                <p style="color: var(--text-secondary); height: 40px;">Everything you need to grow your audience on
+                    autopilot.</p>
+            </div>
+            <div style="margin-bottom: 2rem;">
+                <span style="font-size: 3.5rem; font-weight: 800; color: white;">$15</span><span
+                    style="color: var(--text-muted); font-size: 1.2rem;">/mo</span>
+            </div>
+            <ul
+                style="list-style: none; padding: 0; margin: 0 0 2rem 0; flex-grow: 1; color: var(--text-primary); line-height: 2; font-weight: 500;">
+                <li><span style="color: var(--accent-primary); margin-right: 10px; font-weight: 800;">✓</span> 150
+                    Processing Minutes</li>
+                <li><span style="color: var(--accent-primary); margin-right: 10px; font-weight: 800;">✓</span> 1080p
+                    Export Quality</li>
+                <li><span style="color: var(--accent-primary); margin-right: 10px; font-weight: 800;">✓</span> No
+                    Watermarks</li>
+                <li><span style="color: var(--accent-primary); margin-right: 10px; font-weight: 800;">✓</span> AI Viral
+                    Hooks (Gemini 2.5)</li>
+            </ul>
+            {% if request.user.is_authenticated %}
+            <button onclick="subscribeToPlan('pro')" class="btn btn-primary"
+                style="width: 100%; text-align: center; font-size: 1.1rem; padding: 1rem; box-shadow: 0 8px 30px rgba(124, 58, 237, 0.5);">Upgrade
+                to Pro</button>
+            {% else %}
+            <a href="/login/?next=/pricing/" class="btn btn-primary" style="width: 100%; text-align: center;">Sign in to
+                Upgrade</a>
+            {% endif %}
+        </div>
+
+        <!-- AGENCY TIER -->
+        <div class="bento-card"
+            style="background: rgba(18, 18, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 2.5rem; display: flex; flex-direction: column;">
+            <div style="margin-bottom: 2rem;">
+                <h3 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Agency</h3>
+                <p style="color: var(--text-secondary); height: 40px;">High volume processing for teams and agencies.
+                </p>
+            </div>
+            <div style="margin-bottom: 2rem;">
+                <span style="font-size: 3.5rem; font-weight: 800; color: white;">$49</span><span
+                    style="color: var(--text-muted); font-size: 1.2rem;">/mo</span>
+            </div>
+            <ul
+                style="list-style: none; padding: 0; margin: 0 0 2rem 0; flex-grow: 1; color: var(--text-secondary); line-height: 2;">
+                <li><span style="color: var(--accent-secondary); margin-right: 10px;">✓</span> 600 Processing Minutes
+                </li>
+                <li><span style="color: var(--accent-secondary); margin-right: 10px;">✓</span> 4K Export Quality</li>
+                <li><span style="color: var(--accent-secondary); margin-right: 10px;">✓</span> Priority Queue Rendering
+                </li>
+                <li><span style="color: var(--accent-secondary); margin-right: 10px;">✓</span> Direct API Access</li>
+            </ul>
+            {% if request.user.is_authenticated %}
+            <button onclick="subscribeToPlan('agency')" class="btn btn-outline"
+                style="width: 100%; text-align: center;">Get Agency</button>
+            {% else %}
+            <a href="/login/?next=/pricing/" class="btn btn-outline" style="width: 100%; text-align: center;">Sign
+                in</a>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<!-- Razorpay Checkout Script -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+function subscribeToPlan(plan) {
+    // Step 1: Call Django to create a Razorpay Subscription
+    fetch(`/api/create-subscription/${plan}/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        // Step 2: Open Razorpay Checkout popup
+        var options = {
+            "key": data.razorpay_key_id,
+            "subscription_id": data.subscription_id,
+            "name": "Highlightly",
+            "description": plan === "pro" ? "Pro Creator Plan" : "Agency Plan",
+            "prefill": {
+                "name": data.user_name,
+                "email": data.user_email,
+            },
+            "theme": {
+                "color": "#7C3AED"
+            },
+            "handler": function(response) {
+                // Step 3: Verify payment on server
+                fetch('/api/verify-payment/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_subscription_id: response.razorpay_subscription_id,
+                        razorpay_signature: response.razorpay_signature,
+                        plan_type: plan,
+                    }),
+                })
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success) {
+                        window.location.href = result.redirect_url;
+                    } else {
+                        alert('Payment verification failed. Please contact support.');
+                    }
+                })
+                .catch(err => {
+                    console.error('Verification error:', err);
+                    alert('Something went wrong. Please contact support.');
+                });
+            },
+            "modal": {
+                "ondismiss": function() {
+                    // User closed the popup without paying
+                    console.log('Checkout popup closed');
+                }
+            }
+        };
+
+        var rzp = new Razorpay(options);
+        rzp.open();
+    })
+    .catch(err => {
+        console.error('Subscription creation error:', err);
+        alert('Unable to start checkout. Please try again.');
+    });
+}
+
+// Helper to get CSRF token from cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

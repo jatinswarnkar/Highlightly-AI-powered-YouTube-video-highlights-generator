@@ -5,89 +5,72 @@
 <!-- CSRF -->
 <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 
-<!-- ================= HERO ================= -->
-<section class="hero">
-  <div class="container">
-    <h1 class="hero-title">
+<!-- ================= UNIFIED HERO & APP ================= -->
+<section class="hero-unified">
+  <div class="container text-center">
+
+    <!-- Hero Badge -->
+    <div class="hero-badge">
+      <span class="pulse-dot"></span> #1 AI VIDEO CLIPPING TOOL
+    </div>
+
+    <h1 class="hero-title-massive">
       Turn long videos into<br>
       <span class="animated-gradient-text">viral Shorts & Reels</span>
     </h1>
 
-    <p class="hero-subtitle">
-      AI finds the best moments, adds captions, and exports
+    <p class="hero-subtitle-large">
+      AI finds the best moments, adds captions, and exports<br>
       ready-to-post clips for Instagram, YouTube & TikTok.
     </p>
 
-    <div class="hero-meta">
-      🎬 Creators • ⚡ No editing • 🚀 Faster growth
+    <div
+      style="margin-bottom: var(--spacing-lg); font-size: 0.85rem; color: var(--text-muted); font-weight: 600; letter-spacing: 0.05em;">
+      🎬 CREATORS • ⚡ NO EDITING • 🚀 FASTER GROWTH
     </div>
-  </div>
-</section>
 
-<!-- ================= APP / CTA ================= -->
-{% if user.is_authenticated %}
+    <!-- Unified Input Pill (Opus Style) -->
+    {% if user.is_authenticated %}
+    <div x-data="highlightApp()" class="hero-app-container">
 
-<section class="container" x-data="highlightApp()">
-  <div class="glowing-card-wrap">
-    <div class="glowing-card">
-
-
-      <div class="form-group" style="margin-bottom: 0;" x-data="{ activeTab: 'url' }">
-
-        <div class="tabs">
-          <button class="tab-btn" :class="activeTab === 'url' ? 'active' : ''" @click.prevent="activeTab = 'url'">
-            🔗 Paste Link
-          </button>
-          <button class="tab-btn" :class="activeTab === 'file' ? 'active' : ''" @click.prevent="activeTab = 'file'">
-            📁 Upload File
+      <!-- Input Pill -->
+      <div class="input-pill-wrapper" x-show="!loading && highlights.length === 0">
+        <div class="input-pill">
+          <svg xmlns="http://www.3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 256 256"
+            class="link-icon text-muted">
+            <path
+              d="M141.66,133.66l-40,40a8,8,0,0,1-11.32-11.32l40-40a8,8,0,0,1,11.32,11.32ZM216,152a56.06,56.06,0,0,1-56,56H112a8,8,0,0,1,0-16h48a40,40,0,0,0,0-80H112a8,8,0,0,1,0-16h48A56.06,56.06,0,0,1,216,152Zm-72,40H96A40,40,0,0,1,96,112h48a8,8,0,0,0,0-16H96a56,56,0,0,0,0,112h48a8,8,0,0,0,0-16Z">
+            </path>
+          </svg>
+          <input type="text" x-model="url" placeholder="Drop a video link" class="pill-input">
+          <button @click="start()" :disabled="!url && !file" class="btn btn-pill-primary">
+            Get free clips
           </button>
         </div>
 
-        <div x-show="activeTab === 'url'" x-transition style="margin-bottom: var(--spacing-lg);">
-          <input type="text" x-model="url" placeholder="Paste YouTube URL (recommended)" class="input-field">
-        </div>
-
-        <div x-show="activeTab === 'file'" x-cloak style="margin-bottom: var(--spacing-lg); display: none;">
-          <label class="file-drop-area">
-            <span class="file-msg">
-              <span x-show="!file">📁 Click or drag video file here</span>
-              <span x-show="file" x-text="file ? file.name : ''" style="color: var(--accent-primary);"></span>
-            </span>
-            <input type="file" accept="video/*" @change="file = $event.target.files[0]" class="file-input-hidden">
+        <div class="upload-alternative">
+          or
+          <label class="upload-link-btn">
+            Upload files
+            <input type="file" accept="video/*" @change="file = $event.target.files[0]; start()"
+              class="file-input-hidden">
           </label>
         </div>
-
-        <button @click="start()" :disabled="loading" class="btn btn-primary"
-          style="width: 100%; font-size: 1.1rem; padding: 1rem;">
-          <span x-show="!loading">🚀 Generate Highlights</span>
-          <span x-show="loading" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <span class="spinner" style="width: 20px; height: 20px; border-width: 2px; margin: 0;"></span>
-            Processing…
-          </span>
-        </button>
-
-        <p style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: var(--spacing-md);">
-          Free plan: limited highlights • Pro unlocks unlimited clips
-        </p>
       </div>
 
       <!-- LOADING STATE -->
-      <div x-show="loading" style="text-align: center; margin-top: var(--spacing-xl);">
-
-        <h3 x-text="progressText" style="color: var(--text-primary); margin-bottom: var(--spacing-sm);"></h3>
-
-        <div class="progress-container">
-          <div class="progress-bar" :style="`width: ${progressPercent}%`"></div>
+      <div x-show="loading" class="hero-loading-state" x-cloak>
+        <div class="spinner-large"></div>
+        <h3 x-text="progressText" class="loading-text"></h3>
+        <div class="progress-pill">
+          <div class="progress-pill-bar" :style="`width: ${progressPercent}%`"></div>
         </div>
-
-        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted);">
-          <span><span x-text="Math.round(progressPercent)"></span>% complete</span>
-          <span>This usually takes 30–90 seconds</span>
-        </div>
+        <p class="loading-eta"><span x-text="Math.round(progressPercent)"></span>% complete • This usually takes 30–90
+          seconds</p>
       </div>
 
       <!-- RESULTS GRID -->
-      <div x-show="highlights.length > 0" class="highlights-grid" x-cloak>
+      <div x-show="highlights.length > 0" class="highlights-grid results-in-hero" x-cloak>
         <template x-for="highlight in highlights" :key="highlight.video">
           <div class="highlight-item">
             <div class="highlight-video-wrapper">
@@ -96,9 +79,7 @@
               </video>
 
               <div class="highlight-meta">
-                <div class="highlight-badge">
-                  ✨ AI Highlight
-                </div>
+                <div class="highlight-badge">✨ AI Highlight</div>
                 <a :href="highlight.video" download class="btn-icon" title="Download Video">
                   <svg xmlns="http://www.3.org/2000/svg" viewBox="0 0 24 24">
                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
@@ -106,31 +87,288 @@
                 </a>
               </div>
             </div>
+
+            <!-- AI CAPTION & HASHTAGS -->
+            <div class="highlight-ai-content" x-data="{ copied: false }">
+              <div class="ai-caption-box">
+                <p class="ai-caption" x-text="highlight.ai_caption || 'Writing caption...'"></p>
+                <p class="ai-hashtags" x-text="highlight.ai_hashtags"></p>
+              </div>
+              <button class="btn-copy"
+                @click="navigator.clipboard.writeText(`${highlight.ai_caption}\n\n${highlight.ai_hashtags}`); copied = true; setTimeout(() => copied = false, 2000)"
+                :class="{ 'copied': copied }">
+                <span x-show="!copied">Copy Text</span>
+                <span x-show="copied">Copied!</span>
+              </button>
+            </div>
           </div>
         </template>
       </div>
+    </div>
 
+    {% else %}
+    <!-- GUEST CTA -->
+    <div class="hero-app-container">
+      <div class="input-pill-wrapper">
+        <div class="input-pill">
+          <svg xmlns="http://www.3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 256 256"
+            class="link-icon text-muted">
+            <path
+              d="M141.66,133.66l-40,40a8,8,0,0,1-11.32-11.32l40-40a8,8,0,0,1,11.32,11.32ZM216,152a56.06,56.06,0,0,1-56,56H112a8,8,0,0,1,0-16h48a40,40,0,0,0,0-80H112a8,8,0,0,1,0-16h48A56.06,56.06,0,0,1,216,152Zm-72,40H96A40,40,0,0,1,96,112h48a8,8,0,0,0,0-16H96a56,56,0,0,0,0,112h48a8,8,0,0,0,0-16Z">
+            </path>
+          </svg>
+          <input type="text" placeholder="Drop a video link" class="pill-input" readonly
+            onclick="window.location.href='/signup/'">
+          <a href="/signup/" class="btn btn-pill-primary" style="text-decoration: none;">
+            Sign up - It's FREE
+          </a>
+        </div>
+        <div class="upload-alternative">
+          or <a href="/signup/" class="upload-link-btn">Upload files</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Social Proof Badges under Hero -->
+    <div class="hero-social-proof">
+      <p>Used by 12M+ creators and businesses</p>
+      <div class="social-logos">
+        <div class="avatar-circle" style="background: linear-gradient(135deg, #FF6B6B, #FF8E53);" title="Creator 1">
+        </div>
+        <div class="avatar-circle" style="background: linear-gradient(135deg, #4facfe, #00f2fe);" title="Creator 2">
+        </div>
+        <div class="avatar-circle" style="background: linear-gradient(135deg, #43e97b, #38f9d7);" title="Creator 3">
+        </div>
+        <div class="avatar-circle" style="background: linear-gradient(135deg, #fa709a, #fee140);" title="Creator 4">
+        </div>
+        <div class="avatar-circle" style="background: linear-gradient(135deg, #f6d365, #fda085);" title="Creator 5">
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-{% else %}
+<!-- ================= FEATURES / HOW IT WORKS ================= -->
+<section id="features" class="features-section container">
+  <div class="features-header text-center">
+    <h2 class="section-title">Why Creators Love <span class="animated-gradient-text">Highlightly</span></h2>
+    <p class="section-subtitle">Everything you need to scale your audience on shorts, reels, and TikToks.</p>
+  </div>
 
-<!-- CTA FOR GUESTS -->
-<section class="container" style="margin-top: var(--spacing-xl);">
-  <div class="glass-card"
-    style="text-align: center; max-width: 700px; margin: 0 auto; padding: var(--spacing-xl) 2rem;">
-    <h2>Create viral clips in minutes</h2>
-    <p style="color: var(--text-secondary); font-size: 1.1rem; margin-bottom: var(--spacing-lg);">
-      Sign up to upload videos and generate AI-powered highlights instantly.
-    </p>
-    <a href="/signup/" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
-      🚀 Start Free Trial
-    </a>
+  <div class="bento-grid">
+    <!-- Feature 1 -->
+    <div class="bento-card">
+      <div class="bento-icon">🤖</div>
+      <h3 class="bento-title">Context-Aware AI</h3>
+      <p class="bento-desc">Tired of clips cutting off early? Our AI engine understands context to ensure your jokes and
+        explanations are extracted fully. No more clunky manual editing required.</p>
+      <div class="bento-glow"></div>
+    </div>
+
+    <!-- Feature 2 -->
+    <div class="bento-card card-tall">
+      <div class="bento-icon">🎯</div>
+      <h3 class="bento-title">Advanced Face-Tracking</h3>
+      <p class="bento-desc">During dynamic footage with lots of movement, other tools lose the subject. Highlightly's
+        MediaPipe engine dynamically crops your video sideways, keeping you perfectly centered inside the 9:16 frame.
+      </p>
+      <div class="bento-glow"></div>
+    </div>
+
+    <!-- Feature 3 -->
+    <div class="bento-card">
+      <div class="bento-icon">⚡</div>
+      <h3 class="bento-title">Raw Authenticity</h3>
+      <p class="bento-desc">Stop using the same cookie-cutter templates as everyone else. We output clean, perfectly
+        cropped video paired with a Gemini-generated viral hook and hashtags. Just copy, paste, and post.</p>
+      <div class="bento-glow"></div>
+    </div>
   </div>
 </section>
 
-{% endif %}
+<!-- ================= SOCIAL PROOF / WALL OF LOVE ================= -->
+<section id="testimonials" class="testimonials-section">
+  <div class="container text-center" style="margin-bottom: var(--spacing-lg);">
+    <h2 class="section-title">Wall of <span class="animated-gradient-text">Love</span></h2>
+    <p class="section-subtitle">Real creators scaling their views with Highlightly.</p>
+  </div>
+
+  <div class="marquee-wrapper">
+    <div class="marquee-content">
+      <!-- Testimonial 1 -->
+      <div class="tweet-card">
+        <div class="tweet-header">
+          <div class="tweet-avatar" style="background: linear-gradient(135deg, #FF6B6B, #FF8E53);"></div>
+          <div>
+            <div class="tweet-name">Sarah Jenkins</div>
+            <div class="tweet-handle">@sarahcreates</div>
+          </div>
+        </div>
+        <p class="tweet-body">I used to spend 4 hours a week clipping my podcast. Highlightly did it in 5 minutes. The
+          AI hooks are actually good?! 🤯</p>
+      </div>
+
+      <!-- Testimonial 2 -->
+      <div class="tweet-card">
+        <div class="tweet-header">
+          <div class="tweet-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
+          <div>
+            <div class="tweet-name">Marcus Tech</div>
+            <div class="tweet-handle">@marcusreviews</div>
+          </div>
+        </div>
+        <p class="tweet-body">The smart face-tracking is insane. It locked onto my face while I was walking around the
+          studio perfectly. Saved my last video.</p>
+      </div>
+
+      <!-- Testimonial 3 -->
+      <div class="tweet-card">
+        <div class="tweet-header">
+          <div class="tweet-avatar" style="background: linear-gradient(135deg, #43e97b, #38f9d7);"></div>
+          <div>
+            <div class="tweet-name">Elena Fitness</div>
+            <div class="tweet-handle">@fitbyelena</div>
+          </div>
+        </div>
+        <p class="tweet-body">From 1 long yoga flow to 7 TikToks ready to post. Currently hitting record views. This
+          tool is a cheat code. 🚀</p>
+      </div>
+
+      <!-- Testimonial 4 -->
+      <div class="tweet-card">
+        <div class="tweet-header">
+          <div class="tweet-avatar" style="background: linear-gradient(135deg, #fa709a, #fee140);"></div>
+          <div>
+            <div class="tweet-name">Dev Streamer</div>
+            <div class="tweet-handle">@codeandchill</div>
+          </div>
+        </div>
+        <p class="tweet-body">Highlightly catches the exact moments the chat goes wild acting on stream. The automated
+          hashtags are a nice touch too.</p>
+      </div>
+
+      <!-- Duplicate for infinite scroll loop -->
+      <div class="tweet-card">
+        <div class="tweet-header">
+          <div class="tweet-avatar" style="background: linear-gradient(135deg, #FF6B6B, #FF8E53);"></div>
+          <div>
+            <div class="tweet-name">Sarah Jenkins</div>
+            <div class="tweet-handle">@sarahcreates</div>
+          </div>
+        </div>
+        <p class="tweet-body">I used to spend 4 hours a week clipping my podcast. Highlightly did it in 5 minutes. The
+          AI hooks are actually good?! 🤯</p>
+      </div>
+      <div class="tweet-card">
+        <div class="tweet-header">
+          <div class="tweet-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
+          <div>
+            <div class="tweet-name">Marcus Tech</div>
+            <div class="tweet-handle">@marcusreviews</div>
+          </div>
+        </div>
+        <p class="tweet-body">The smart face-tracking is insane. It locked onto my face while I was walking around the
+          studio perfectly. Saved my last video.</p>
+      </div>
+      <div class="tweet-card">
+        <div class="tweet-header">
+          <div class="tweet-avatar" style="background: linear-gradient(135deg, #43e97b, #38f9d7);"></div>
+          <div>
+            <div class="tweet-name">Elena Fitness</div>
+            <div class="tweet-handle">@fitbyelena</div>
+          </div>
+        </div>
+        <p class="tweet-body">From 1 long yoga flow to 7 TikToks ready to post. Currently hitting record views. This
+          tool is a cheat code. 🚀</p>
+      </div>
+      <div class="tweet-card">
+        <div class="tweet-header">
+          <div class="tweet-avatar" style="background: linear-gradient(135deg, #fa709a, #fee140);"></div>
+          <div>
+            <div class="tweet-name">Dev Streamer</div>
+            <div class="tweet-handle">@codeandchill</div>
+          </div>
+        </div>
+        <p class="tweet-body">Highlightly catches the exact moments the chat goes wild acting on stream. The automated
+          hashtags are a nice touch too.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING TIERS ================= -->
+<section id="pricing" class="pricing-section container">
+  <div class="text-center" style="margin-bottom: var(--spacing-xl);">
+    <h2 class="section-title">Simple, transparent <span class="animated-gradient-text">pricing</span></h2>
+    <p class="section-subtitle">Start for free. Upgrade when your audience takes off.</p>
+
+    <!-- Optional Toggle Placeholder -->
+    <div class="pricing-toggle">
+      <span class="active">Monthly</span>
+      <span style="color: var(--text-muted); margin-left: var(--spacing-md);">Yearly (Save 20%)</span>
+    </div>
+  </div>
+
+  <div class="pricing-grid">
+    <!-- Starter Plan -->
+    <div class="pricing-card">
+      <h3 class="pricing-name">Starter</h3>
+      <div class="pricing-price">$0<span class="pricing-period">/mo</span></div>
+      <p class="pricing-desc">Perfect to test the waters and grab a few clips.</p>
+      <ul class="pricing-features">
+        <li>👉 3 Watermarked Videos / mo</li>
+        <li>👉 720p Export Quality</li>
+        <li>👉 Standard Face-Tracking</li>
+        <li class="disabled">No AI Captions</li>
+      </ul>
+      {% if user.is_authenticated %}
+      <a href="/dashboard/" class="btn btn-outline" style="width: 100%; text-align: center;">Go to Dashboard</a>
+      {% else %}
+      <a href="/signup/" class="btn btn-outline" style="width: 100%; text-align: center;">Get Started Free</a>
+      {% endif %}
+    </div>
+
+    <!-- Pro Plan -->
+    <div class="pricing-card popular">
+      <div class="popular-badge">Most Popular</div>
+      <h3 class="pricing-name">Pro Creator</h3>
+      <div class="pricing-price">$9<span class="pricing-period">/mo</span></div>
+      <p class="pricing-desc">Everything you need to grow across all platforms.</p>
+      <ul class="pricing-features">
+        <li>👉 150 Processing Mins / mo</li>
+        <li>👉 1080p Export (No Watermark)</li>
+        <li>👉 Gemini AI Viral Hooks</li>
+        <li>👉 Priority Rendering</li>
+      </ul>
+      {% if user.is_authenticated %}
+      <button onclick="subscribeToPlan('pro')" class="btn btn-primary" style="width: 100%; text-align: center;">Upgrade
+        to Pro</button>
+      {% else %}
+      <a href="/signup/" class="btn btn-primary" style="width: 100%; text-align: center;">Start 7-Day Trial</a>
+      {% endif %}
+    </div>
+
+    <!-- Agency Plan -->
+    <div class="pricing-card">
+      <h3 class="pricing-name">Agency</h3>
+      <div class="pricing-price">$25<span class="pricing-period">/mo</span></div>
+      <p class="pricing-desc">For managers running multiple creator accounts.</p>
+      <ul class="pricing-features">
+        <li>👉 600 Processing Mins / mo</li>
+        <li>👉 4K Export Quality</li>
+        <li>👉 Custom Brand Colors/Fonts</li>
+        <li>👉 Dedicated support</li>
+      </ul>
+      {% if user.is_authenticated %}
+      <button onclick="subscribeToPlan('agency')" class="btn btn-outline" style="width: 100%; text-align: center;">Get
+        Agency</button>
+      {% else %}
+      <a href="/signup/" class="btn btn-outline" style="width: 100%; text-align: center;">Contact Sales</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
 
 <!-- ================= APP LOGIC ================= -->
 <script>
@@ -240,6 +478,53 @@
         }
       }
     }
+  }
+</script>
+
+<!-- Razorpay Checkout -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  function subscribeToPlan(plan) {
+    fetch(`/api/create-subscription/${plan}/`, {
+      method: 'GET',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) { alert(data.error); return; }
+        var options = {
+          "key": data.razorpay_key_id,
+          "subscription_id": data.subscription_id,
+          "name": "Highlightly",
+          "description": plan === "pro" ? "Pro Creator Plan" : "Agency Plan",
+          "prefill": { "name": data.user_name, "email": data.user_email },
+          "theme": { "color": "#7C3AED" },
+          "handler": function (response) {
+            fetch('/api/verify-payment/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+              },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_subscription_id: response.razorpay_subscription_id,
+                razorpay_signature: response.razorpay_signature,
+                plan_type: plan,
+              }),
+            })
+              .then(res => res.json())
+              .then(result => {
+                if (result.success) window.location.href = result.redirect_url;
+                else alert('Payment verification failed.');
+              })
+              .catch(() => alert('Something went wrong.'));
+          },
+        };
+        var rzp = new Razorpay(options);
+        rzp.open();
+      })
+      .catch(() => alert('Unable to start checkout.'));
   }
 </script>
 

@@ -91,8 +91,7 @@ def build_dynamic_crop_expression(bias="center"):
     return (
         "crop=ih*9/16:ih:"
         f"x='(iw-ih*9/16)*{base} + (iw-ih*9/16)*0.12*sin(0.8*t)':"
-        "y=0:"
-        "eval=frame,"
+        "y=0,"
         "setsar=1"
     )
 
@@ -134,6 +133,11 @@ def make_highlights_multiple(
             clip_end
         )
 
+        # 🔥 FAST AI COPYWRITING (GEMINI)
+        clip_transcript = " ".join([w["text"] for w in words])
+        from highlights.utils import generate_viral_hook
+        ai_caption, ai_hashtags = generate_viral_hook(clip_transcript)
+
         drawtext_filters = []
 
         for w in words:
@@ -162,11 +166,11 @@ def make_highlights_multiple(
         # 🔥 SMART 9:16 CROP
         vf_filters = []
 
-        # bias = "center"
-        # if speaker_bias_map:
-        #     bias = speaker_bias_map.get(t, "center")
+        bias = "center"
+        if speaker_bias_map:
+            bias = speaker_bias_map.get(t, "center")
 
-        # vf_filters.append(build_dynamic_crop_expression(bias))
+        vf_filters.append(build_dynamic_crop_expression(bias))
 
         # 🎯 Face-tracked illusion
         vf_filters.append("setsar=1")
@@ -236,7 +240,9 @@ def make_highlights_multiple(
 
         highlights.append({
             "video": video_url,
-            "thumbnail": thumb_url
+            "thumbnail": thumb_url,
+            "ai_caption": ai_caption,
+            "ai_hashtags": ai_hashtags
         })
 
         if len(highlights) >= 6:

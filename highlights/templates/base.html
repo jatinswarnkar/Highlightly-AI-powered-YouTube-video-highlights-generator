@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
 
   <!-- Custom Styles (Pure CSS) -->
-  <link rel="stylesheet" href="{% static 'highlights/style.css' %}">
+  <link rel="stylesheet" href="{% static 'highlights/style.css' %}?v=4">
 
   <!-- Dotted Glow Background Script -->
   <script defer src="{% static 'highlights/dotted-glow.js' %}"></script>
@@ -37,6 +37,8 @@
         <div class="nav-links">
           {% if user.is_authenticated %}
           <span class="text-secondary">Hi {{ user.username }}</span>
+          <a href="/pricing/" class="text-secondary">Pricing</a>
+          <a href="/dashboard/" class="text-secondary">Dashboard</a>
           <a href="/logout/" class="text-muted">Logout</a>
           {% else %}
           <a href="/login/" class="text-secondary">Login</a>
@@ -53,8 +55,47 @@
     </main>
 
     <!-- FOOTER -->
-    <footer class="footer">
-      © 2026 Highlightly • Built for creators
+    <footer class="saas-footer">
+      <div class="container footer-grid">
+        <div class="footer-brand">
+          <h3>✨ Highlightly</h3>
+          <p>Turn long videos into viral 9:16 clips automatically using advanced AI and Face-Tracking.</p>
+        </div>
+
+        <div class="footer-links">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#">Features</a></li>
+            <li><a href="/pricing/">Pricing</a></li>
+            <li><a href="#">Showcase</a></li>
+            <li><a href="#">API</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="#">Help Center</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Creators Guide</a></li>
+            <li><a href="#">Community</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links">
+          <h4>Company</h4>
+          <ul>
+            <li><a href="#">About Us</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom container">
+        <p>&copy; 2026 Highlightly. Built for creators by creators.</p>
+      </div>
     </footer>
 
   </div> <!-- Close dotted-bg-container -->

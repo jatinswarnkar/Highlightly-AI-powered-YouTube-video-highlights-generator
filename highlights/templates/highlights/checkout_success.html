@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Successful | Highlightly{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: clamp(6rem, 15vh, 8rem) 0 var(--spacing-xxl); text-align: center;">
+    <div
+        style="max-width: 600px; margin: 0 auto; background: rgba(18, 18, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 4rem 2rem;">
+
+        <div
+            style="width: 80px; height: 80px; background: rgba(34, 197, 94, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem auto;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--success, #22c55e)"
+                stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        </div>
+
+        <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; color: white;">Payment Successful!</h1>
+
+        <p style="color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 2rem;">
+            Thank you for your purchase! Your account has been upgraded to <b>{{ request.user.profile.plan|title }}</b>.
+        </p>
+
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <a href="/dashboard/" class="btn btn-primary">Go to Dashboard</a>
+            <a href="/start/" class="btn btn-outline">Create a Highlight</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -495,3 +495,51 @@ def extract_words_for_clip(transcript_json, clip_start, clip_end):
 
 def clamp_time(t, max_t):
     return max(0, min(round(t, 2), round(max_t, 2)))
+
+from google import genai
+
+def generate_viral_hook(transcript_text):
+    if not transcript_text or not transcript_text.strip():
+        return "No speech detected.", ""
+        
+    import os
+    from django.conf import settings
+    
+    api_key = getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return "Please set GEMINI_API_KEY in .env", ""
+    
+    try:
+        client = genai.Client(api_key=api_key)
+        # Using gemini-2.5-flash for the latest API support
+        model_id = "gemini-2.5-flash"
+        prompt = (
+            f"Act as a TikTok and Instagram Reels growth expert. "
+            f"Write a 2-sentence engaging viral hook/caption and provide 3 relevant viral hashtags "
+            f"for this short video transcript:\n\n{transcript_text}\n\n"
+            f"Format your response exactly like this:\n"
+            f"Caption: [your 2-sentence captivating hook here]\n"
+            f"Hashtags: [your 3 hashtags here]"
+        )
+        
+        response = client.models.generate_content(
+            model=model_id,
+            contents=prompt
+        )
+        text = response.text
+        
+        caption = ""
+        hashtags = ""
+        for line in text.split('\n'):
+            if line.strip().lower().startswith('caption:'):
+                caption = line.split(':', 1)[1].strip()
+            elif line.strip().lower().startswith('hashtags:'):
+                hashtags = line.split(':', 1)[1].strip()
+        
+        if not caption and not hashtags:
+            caption = text.strip()
+            
+        return caption, hashtags
+    except Exception as e:
+        print(f"Gemini API Error: {e}")
+        return "Failed to generate AI caption.", ""
