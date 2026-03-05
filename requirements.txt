@@ -1,6 +1,7 @@
 absl-py==2.4.0
 annotated-types==0.7.0
 asgiref==3.9.1
+audioop-lts==0.2.2
 audioread==3.0.1
 azure-cognitiveservices-speech==1.37.0
 azure-core==1.37.0
@@ -84,6 +85,9 @@ sounddevice==0.5.5
 soundfile==0.13.1
 soxr==1.0.0
 sqlparse==0.5.3
+standard-aifc==3.13.0
+standard-chunk==3.13.0
+standard-sunau==3.13.0
 sympy==1.14.0
 threadpoolctl==3.6.0
 tiktoken==0.11.0
