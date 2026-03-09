@@ -95,6 +95,61 @@ def build_dynamic_crop_expression(bias="center"):
         "setsar=1"
     )
 
+def snap_to_speech_pause(transcript_json, raw_start, raw_end, max_extend=3):
+    """
+    Adjust clip boundaries to align with natural speech pauses.
+    Looks for gaps between words near clip edges to avoid cutting mid-sentence.
+    Returns (adjusted_start, adjusted_end).
+    """
+    if not transcript_json:
+        return raw_start, raw_end
+
+    nbest = transcript_json.get("NBest", [])
+    if not nbest:
+        return raw_start, raw_end
+
+    words = nbest[0].get("Words", [])
+    if not words:
+        return raw_start, raw_end
+
+    # Get word timings in seconds
+    word_times = []
+    for w in words:
+        ws = w["Offset"] / 10_000_000
+        we = (w["Offset"] + w["Duration"]) / 10_000_000
+        word_times.append((ws, we))
+
+    # Find best start: look for a gap between words near raw_start
+    best_start = raw_start
+    for j in range(len(word_times) - 1):
+        gap_start = word_times[j][1]  # end of word j
+        gap_end = word_times[j + 1][0]  # start of word j+1
+        gap_size = gap_end - gap_start
+
+        # Only consider gaps that are actual pauses (≥ 0.3s)
+        if gap_size >= 0.3 and abs(gap_start - raw_start) <= max_extend:
+            best_start = gap_start
+            break
+
+    # Find best end: look for a gap near raw_end (search backwards)
+    best_end = raw_end
+    for j in range(len(word_times) - 2, -1, -1):
+        gap_start = word_times[j][1]
+        gap_end = word_times[j + 1][0] if j + 1 < len(word_times) else gap_start
+        gap_size = gap_end - gap_start
+
+        if gap_size >= 0.3 and abs(gap_start - raw_end) <= max_extend:
+            best_end = gap_end
+            break
+
+    # Ensure minimum clip duration of 6 seconds
+    if best_end - best_start < 6:
+        best_start = raw_start
+        best_end = raw_end
+
+    return max(0, best_start), best_end
+
+
 def make_highlights_multiple(
     video_path,
     highlight_times,
@@ -118,8 +173,15 @@ def make_highlights_multiple(
             continue
         last_used_time = t
 
-        clip_start = max(0, t - clip_len // 2) if center else t
-        clip_end = clip_start + clip_len
+        # --- Sentence-aware clip boundaries ---
+        # Start with a centered clip
+        raw_start = max(0, t - clip_len // 2)
+        raw_end = raw_start + clip_len
+
+        # Try to snap boundaries to speech pauses in transcript
+        clip_start, clip_end = snap_to_speech_pause(
+            transcript_json, raw_start, raw_end, max_extend=3
+        )
 
         local_video = os.path.join(output_dir, f"highlight_{i}.mp4")
         local_thumb = os.path.join(output_dir, f"thumb_{i}.jpg")
@@ -134,6 +196,7 @@ def make_highlights_multiple(
         )
 
         # 🔥 FAST AI COPYWRITING (GEMINI)
+        actual_duration = clip_end - clip_start
         clip_transcript = " ".join([w["text"] for w in words])
         from highlights.utils import generate_viral_hook
         ai_caption, ai_hashtags = generate_viral_hook(clip_transcript)
@@ -143,8 +206,8 @@ def make_highlights_multiple(
         for w in words:
             text = escape_text(w["text"])
 
-            start = clamp(w["start"], clip_len)
-            end = clamp(w["end"], clip_len)
+            start = clamp(w["start"], actual_duration)
+            end = clamp(w["end"], actual_duration)
 
             if end <= start:
                 continue
@@ -191,7 +254,7 @@ def make_highlights_multiple(
             "ffmpeg", "-y",
             "-ss", str(clip_start),
             "-i", video_path,
-            "-t", str(clip_len),
+            "-t", str(actual_duration),
         ]
 
         if vf:
