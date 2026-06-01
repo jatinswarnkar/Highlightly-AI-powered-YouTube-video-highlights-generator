@@ -274,7 +274,7 @@ import json
 import uuid
 import time
 import subprocess
-import cv2
+# import cv2
 import numpy as np
 import yt_dlp
 import azure.cognitiveservices.speech as speechsdk
@@ -380,27 +380,8 @@ def extract_audio(video_path: str) -> str:
 # SCENE DETECTION
 # =====================================================
 def detect_scenes(video_path, threshold=30.0):
-    scenes = []
-    cap = cv2.VideoCapture(video_path)
-    prev_frame = None
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        if prev_frame is not None:
-            diff = cv2.absdiff(gray, prev_frame)
-            score = np.mean(diff)
-            if score > threshold:
-                scenes.append(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0)
-
-        prev_frame = gray
-
-    cap.release()
-    return scenes
+    # Temporarily disabled OpenCV to fix Azure App Service deployment crash.
+    return []
 
 
 # =====================================================
