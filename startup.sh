@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Install ffmpeg (not included in Azure App Service Python runtime)
+apt-get update && apt-get install -y ffmpeg
+
 # Run migrations
 python manage.py migrate --noinput
 
