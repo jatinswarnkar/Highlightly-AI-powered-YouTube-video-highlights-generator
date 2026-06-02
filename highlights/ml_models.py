@@ -1,4 +1,3 @@
-from transformers import pipeline
 import os
 
 # Prevent HF from trying telemetry / online checks
@@ -13,6 +12,7 @@ def get_emotion_model():
     global _EMOTION_MODEL
     if _EMOTION_MODEL is None:
         print("🔁 Loading emotion model (one-time)...")
+        from transformers import pipeline  # defer heavy import
         _EMOTION_MODEL = pipeline(
             "text-classification",
             model="bhadresh-savani/distilbert-base-uncased-emotion",
