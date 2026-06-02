@@ -304,14 +304,22 @@ def transcribe_with_azure(audio_path: str):
     result = recognizer.recognize_once()
 
     if result.reason != speechsdk.ResultReason.RecognizedSpeech:
+        print(f"❌ Azure Transcription Failed! Reason: {result.reason}")
+        if result.reason == speechsdk.ResultReason.Canceled:
+            cancellation_details = result.cancellation_details
+            print(f"   Cancellation Reason: {cancellation_details.reason}")
+            if cancellation_details.reason == speechsdk.CancellationReason.Error:
+                print(f"   Error Details: {cancellation_details.error_details}")
         return None
 
     try:
         data = json.loads(result.json)
         nbest = data.get("NBest", [])
         if not nbest:
+            print("❌ Azure Transcription returned empty results.")
             return None
 
+        print("✅ Azure Transcription successful.")
         return {
             "NBest": [
                 {
@@ -319,7 +327,8 @@ def transcribe_with_azure(audio_path: str):
                 }
             ]
         }
-    except Exception:
+    except Exception as e:
+        print(f"❌ Azure Transcription parsing error: {e}")
         return None
 
 
@@ -379,9 +388,37 @@ def extract_audio(video_path: str) -> str:
 # =====================================================
 # SCENE DETECTION
 # =====================================================
-def detect_scenes(video_path, threshold=30.0):
-    # Temporarily disabled OpenCV to fix Azure App Service deployment crash.
-    return []
+def detect_scenes(video_path, threshold=0.3):
+    """
+    Detect scene changes using FFmpeg instead of OpenCV.
+    Works perfectly on Azure without needing heavy graphics libraries!
+    """
+    scenes = []
+    cmd = [
+        "ffmpeg",
+        "-i", video_path,
+        "-filter:v", f"select='gt(scene,{threshold})',showinfo",
+        "-f", "null",
+        "-"
+    ]
+
+    proc = subprocess.Popen(
+        cmd,
+        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        text=True
+    )
+
+    for line in proc.stderr:
+        if "Parsed_showinfo" in line and "pts_time:" in line:
+            try:
+                time_str = line.split("pts_time:")[1].split()[0]
+                scenes.append(float(time_str))
+            except Exception:
+                pass
+
+    proc.wait()
+    return scenes
 
 
 # =====================================================

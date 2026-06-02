@@ -27,7 +27,7 @@ def signup_view(request):
             messages.error(request, "User already exists")
         else:
             user = User.objects.create_user(username=username, password=password)
-            login(request, user)
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             return redirect("/")
 
     return render(request, "auth/signup.html")

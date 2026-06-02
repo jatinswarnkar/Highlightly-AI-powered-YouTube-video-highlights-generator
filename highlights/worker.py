@@ -124,6 +124,11 @@ def run_highlight_job(job_id, video_path=None, url=None, user_id=None):
         highlight_times = select_reel_highlights(combined)
         highlight_times = [max(2, t) for t in highlight_times]
 
+        # FALLBACK: If absolutely nothing was detected, just highlight the beginning
+        if not highlight_times:
+            print("⚠️ No highlights detected! Falling back to the start of the video.")
+            highlight_times = [2]
+
         # --------------------------------------------------
         # STEP 4.1: face bias detection (left/center/right)
         # --------------------------------------------------
