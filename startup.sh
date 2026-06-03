@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Prevent interactive prompts (like timezone selection) from hanging the installation
+export DEBIAN_FRONTEND=noninteractive
+
 # Install ffmpeg (not included in Azure App Service Python runtime)
-apt-get update && apt-get install -y ffmpeg
+apt-get update && apt-get install -y --no-install-recommends ffmpeg
 
 # Run migrations
 python manage.py migrate --noinput
